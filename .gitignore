@@ -1,0 +1,19 @@
+# 秘密情報
+.env
+*_secret.txt
+config_local.py
+
+# Python関連
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE関連
+.vscode/
+.idea/
+
+# OS関連
+.DS_Store
+Thumbs.db
