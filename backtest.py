@@ -5,6 +5,8 @@ FX バックテストシステム（りょうちゃん75SMA手法）
 
 import pandas as pd
 import numpy as np
+import os
+import glob
 
 
 class BacktestEngine:
@@ -34,7 +36,7 @@ class BacktestEngine:
     def load_data(self):
         """CSVデータ読み込み"""
         df = pd.read_csv(self.csv_path)
-        df['time'] = pd.to_datetime(df['time'])
+        df['time'] = pd.to_datetime(df['time'], dayfirst=True)
         return df
     
     def calculate_sma(self, df, period=75):
@@ -105,19 +107,16 @@ class BacktestEngine:
         Returns:
             bool: エントリー可否
         """
-        if i < 5:  # 最低限のデータが必要
+        if i < 5:
             return False
         
-        # すでにポジションあり
         if self.position is not None:
             return False
         
-        # 上昇トレンド
         trend = self.check_trend(df, i)
         if trend != 'up':
             return False
         
-        # 平均足の実体が75SMAより完全に上
         body_low = df['body_low'].iloc[i]
         sma75 = df['sma75'].iloc[i]
         
@@ -127,7 +126,6 @@ class BacktestEngine:
         if body_low <= sma75:
             return False
         
-        # 色の変化：赤→青
         if i < 1:
             return False
         
@@ -149,16 +147,13 @@ class BacktestEngine:
         if i < 5:
             return False
         
-        # すでにポジションあり
         if self.position is not None:
             return False
         
-        # 下降トレンド
         trend = self.check_trend(df, i)
         if trend != 'down':
             return False
         
-        # 平均足の実体が75SMAより完全に下
         body_high = df['body_high'].iloc[i]
         sma75 = df['sma75'].iloc[i]
         
@@ -168,7 +163,6 @@ class BacktestEngine:
         if body_high >= sma75:
             return False
         
-        # 色の変化：青→赤
         if i < 1:
             return False
         
@@ -193,7 +187,6 @@ class BacktestEngine:
         if i < 1:
             return False
         
-        # 色の変化：青→赤
         prev_color = df['ha_color'].iloc[i-1]
         curr_color = df['ha_color'].iloc[i]
         
@@ -215,7 +208,6 @@ class BacktestEngine:
         if i < 1:
             return False
         
-        # 色の変化：赤→青
         prev_color = df['ha_color'].iloc[i-1]
         curr_color = df['ha_color'].iloc[i]
         
@@ -234,7 +226,7 @@ class BacktestEngine:
             direction: 'long' or 'short'
         """
         if i + 1 >= len(df):
-            return  # 次の足がない
+            return
         
         self.position = direction
         self.entry_price = df['open'].iloc[i+1]
@@ -254,13 +246,11 @@ class BacktestEngine:
         exit_price = df['open'].iloc[i+1]
         exit_time = df['time'].iloc[i+1]
         
-        # 獲得pips計算（USD/JPYは0.01 = 1pip）
         if self.position == 'long':
             pips = (exit_price - self.entry_price) * 100
-        else:  # short
+        else:
             pips = (self.entry_price - exit_price) * 100
         
-        # 取引記録
         trade = {
             'entry_time': self.entry_time,
             'exit_time': exit_time,
@@ -271,37 +261,29 @@ class BacktestEngine:
         }
         self.trades.append(trade)
         
-        # ポジションクリア
         self.position = None
         self.entry_price = None
         self.entry_time = None
     
     def run(self):
         """バックテスト実行"""
-        # データ読み込み
         df = self.load_data()
-        
-        # インジケーター計算
         df = self.calculate_sma(df)
         df = self.calculate_heikin_ashi(df)
         df = self.calculate_ha_color(df)
         df = self.calculate_ha_body(df)
         
-        # 1本ずつ処理
         for i in range(len(df)):
-            # 決済チェック（エントリーより優先）
             if self.check_long_exit(df, i):
                 self.exit_position(df, i)
             elif self.check_short_exit(df, i):
                 self.exit_position(df, i)
             
-            # エントリーチェック
             if self.check_long_entry(df, i):
                 self.enter_position(df, i, 'long')
             elif self.check_short_entry(df, i):
                 self.enter_position(df, i, 'short')
         
-        # 最終足でポジション保有中の場合は強制決済
         if self.position is not None and len(df) > 0:
             last_idx = len(df) - 1
             exit_price = df['close'].iloc[last_idx]
@@ -335,23 +317,16 @@ class BacktestEngine:
         
         trades_df = pd.DataFrame(self.trades)
         
-        # 総損益
         total_pips = trades_df['pips'].sum()
-        
-        # 取引回数
         trade_count = len(trades_df)
-        
-        # 勝率
         wins = (trades_df['pips'] > 0).sum()
         win_rate = (wins / trade_count) * 100 if trade_count > 0 else 0
         
-        # 最大ドローダウン
         cumulative = trades_df['pips'].cumsum()
         running_max = cumulative.expanding().max()
         drawdown = running_max - cumulative
         max_drawdown = drawdown.max()
         
-        # プロフィットファクター
         gross_profit = trades_df[trades_df['pips'] > 0]['pips'].sum()
         gross_loss = abs(trades_df[trades_df['pips'] < 0]['pips'].sum())
         profit_factor = gross_profit / gross_loss if gross_loss > 0 else 0
@@ -394,12 +369,46 @@ class BacktestEngine:
             print("-" * 120)
 
 
-# 使用例
-if __name__ == "__main__":
-    # CSVファイルパス
-    csv_path = "usdjpy_h1.csv"  # ← ここをあなたのCSVパスに変更
+def select_csv_file():
+    """dataフォルダからCSVファイルを選択"""
+    data_dir = "data"
     
-    # バックテスト実行
-    bt = BacktestEngine(csv_path)
-    bt.run()
-    bt.print_results()
+    if not os.path.exists(data_dir):
+        print(f"エラー: {data_dir} フォルダが見つかりません")
+        return None
+    
+    csv_files = glob.glob(os.path.join(data_dir, "*.csv"))
+    
+    if len(csv_files) == 0:
+        print(f"エラー: {data_dir} フォルダにCSVファイルがありません")
+        return None
+    
+    print("\n利用可能なCSVファイル:")
+    for i, file_path in enumerate(csv_files, 1):
+        filename = os.path.basename(file_path)
+        print(f"{i}. {filename}")
+    
+    while True:
+        try:
+            choice = input("\nどのファイルを使いますか？ (番号を入力): ")
+            index = int(choice) - 1
+            
+            if 0 <= index < len(csv_files):
+                return csv_files[index]
+            else:
+                print("無効な番号です。もう一度入力してください。")
+        except ValueError:
+            print("数字を入力してください。")
+        except KeyboardInterrupt:
+            print("\n中断しました")
+            return None
+
+
+if __name__ == "__main__":
+    csv_path = select_csv_file()
+    
+    if csv_path:
+        print(f"\n選択されたファイル: {os.path.basename(csv_path)}\n")
+        bt = BacktestEngine(csv_path)
+        bt.run()
+        bt.print_results()
