@@ -403,7 +403,7 @@ if 'bt' in st.session_state and 'metrics' in st.session_state:
         hovermode='x unified'
     )
     
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
     
     # 取引一覧
     st.header("📋 取引一覧")
@@ -419,7 +419,7 @@ if 'bt' in st.session_state and 'metrics' in st.session_state:
                 'pips': '{:.2f}',
                 'cumulative_pips': '{:.2f}'
             }),
-            use_container_width=True
+            width='stretch'
         )
     else:
         st.info("取引がありません")
