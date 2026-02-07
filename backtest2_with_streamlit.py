@@ -11,7 +11,7 @@ from pathlib import Path
 # ========== 定数定義 ==========
 STRATEGY_NAME = "R氏 平均足75SMA手法"
 
-class BacktestEngine:
+class BacktestEngine:image.png
     """バックテストエンジン"""
     
     def __init__(self, csv_path, spread_pips=0, slippage_pips=0):
@@ -289,8 +289,9 @@ st.title(f"📊 {STRATEGY_NAME} バックテスト可視化")
 # サイドバー
 st.sidebar.header("設定")
 
-# CSVファイル選択
-data_dir = Path("data")
+# CSVファイル選択（どこから実行しても崩れないように固定）
+base_dir = Path(__file__).resolve().parent
+data_dir = base_dir / "data"
 if data_dir.exists():
     csv_files = list(data_dir.glob("*.csv"))
     csv_names = [f.name for f in csv_files]

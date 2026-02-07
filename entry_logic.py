@@ -92,6 +92,10 @@ def entry_signal(instrument='USD_JPY'):
     - 'WAIT': 待機
     """
     print(f"=== {instrument} エントリー判定 ===\n")
+
+    if not api_token:
+        print("❌ OANDA_DEMO_API_TOKEN が未設定です（.env を用意してください）")
+        return 'WAIT'
     
     # 1. 現在価格と75SMA取得
     sma_result = get_sma(instrument, period=75)
@@ -108,7 +112,7 @@ def entry_signal(instrument='USD_JPY'):
     print(f"SMAの傾き: {slope:.3f} ({'上昇' if is_uptrend else '下降'})")
     
     # 3. 平均足の色変化チェック
-    df_ha = calculate_heikin_ashi(instrument)
+    df_ha = calculate_heikin_ashi(instrument, granularity="H1", count=200)
     if df_ha is None:
         print("❌ 平均足取得エラー")
         return 'WAIT'
