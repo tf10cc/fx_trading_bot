@@ -412,6 +412,8 @@ def create_lightweight_chart(df, trades, chart_height=600):
         })
         
         # 決済（◎利確、✖損切り）
+        # TODO: Lightweight Chartsの仕様上、●と◎✖が重なって表示されてしまう
+        # shapeを消してtextだけにする方法が不明。とりあえずこのまま残す
         is_profit = trade['pips'] > 0
         markers.append({
             'time': exit_time,
