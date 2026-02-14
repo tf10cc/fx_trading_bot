@@ -496,7 +496,7 @@ if 'bt' in st.session_state and 'metrics' in st.session_state:
         yaxis_title="価格",
         height=chart_height,
         hovermode='x unified',
-        uirevision='constant',  # スライダー操作時もズーム状態を保持
+        uirevision='constant',  # ズーム保持を試みたがStreamlitの仕様上不可能と判明
         plot_bgcolor='#1e1e1e',
         paper_bgcolor='#1e1e1e',
         font=dict(color='#e0e0e0'),
