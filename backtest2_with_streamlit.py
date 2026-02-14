@@ -7,11 +7,12 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from pathlib import Path
+from dateutil import parser
 
 # ========== 定数定義 ==========
 STRATEGY_NAME = "R氏 平均足75SMA手法"
 
-class BacktestEngine:image.png
+class BacktestEngine:
     """バックテストエンジン"""
     
     def __init__(self, csv_path, spread_pips=0, slippage_pips=0):
@@ -44,17 +45,60 @@ class BacktestEngine:image.png
         self.total_loss_pips = 0
         
     def load_data(self):
-        """CSVファイルを読み込み"""
+        """CSVファイルを読み込み、標準フォーマットに変換"""
         self.df = pd.read_csv(self.csv_path)
         
-        # 列名を小文字に統一
-        self.df.columns = self.df.columns.str.lower()
+        # 列名を標準化（<>を除去、小文字に統一）
+        self.df.columns = self.df.columns.str.replace('<', '').str.replace('>', '').str.lower()
         
-        # UTCがあればtimeにリネーム
-        if 'utc' in self.df.columns:
-            self.df = self.df.rename(columns={'utc': 'time'})
+        # フォーマット判定と変換
+        if 'ticker' in self.df.columns and 'dtyyyymmdd' in self.df.columns:
+            # Forex Tester形式
+            self.df = self._convert_forex_tester_format()
+        elif 'utc' in self.df.columns:
+            # 既存ドル円形式
+            self.df = self._convert_standard_format()
+        elif 'time' in self.df.columns:
+            # 標準形式（そのまま使用）
+            self.df['time'] = pd.to_datetime(self.df['time'], dayfirst=True)
+        else:
+            raise ValueError("不明なCSVフォーマットです")
+    
+    def _convert_forex_tester_format(self):
+        """Forex Tester形式を標準フォーマットに変換"""
+        # 日付と時刻を結合
+        df_converted = pd.DataFrame()
         
-        self.df['time'] = pd.to_datetime(self.df['time'], dayfirst=True)
+        # DTYYYYMMDD + TIME を datetime に変換
+        date_str = self.df['dtyyyymmdd'].astype(str)
+        time_str = self.df['time'].astype(str).str.zfill(4)  # 4桁に0埋め
+        datetime_str = date_str + ' ' + time_str
+        
+        df_converted['datetime'] = pd.to_datetime(datetime_str, format='%Y%m%d %H%M')
+        df_converted['open'] = self.df['open']
+        df_converted['high'] = self.df['high']
+        df_converted['low'] = self.df['low']
+        df_converted['close'] = self.df['close']
+        df_converted['volume'] = self.df['vol']
+        
+        # timeカラムにリネーム（既存ロジック互換性）
+        df_converted = df_converted.rename(columns={'datetime': 'time'})
+        
+        return df_converted
+    
+    def _convert_standard_format(self):
+        """既存ドル円形式を標準フォーマットに変換"""
+        df_converted = pd.DataFrame()
+        
+        # UTCカラムをdatetimeに変換
+        df_converted['time'] = pd.to_datetime(self.df['utc'], dayfirst=True)
+        df_converted['open'] = self.df['open']
+        df_converted['high'] = self.df['high']
+        df_converted['low'] = self.df['low']
+        df_converted['close'] = self.df['close']
+        df_converted['volume'] = self.df['volume']
+        
+        return df_converted
         
     def calculate_sma(self, period=75):
         """単純移動平均を計算"""
@@ -180,14 +224,20 @@ class BacktestEngine:image.png
         
     def enter_position(self, idx, direction):
         """エントリー"""
+        if idx + 1 >= len(self.df):
+            return
+        
         self.current_position = direction
-        self.entry_time = self.df['time'].iloc[idx]
-        self.entry_price = self.df['open'].iloc[idx]
+        self.entry_time = self.df['time'].iloc[idx + 1]
+        self.entry_price = self.df['open'].iloc[idx + 1]
         
     def exit_position(self, idx):
         """決済"""
-        exit_time = self.df['time'].iloc[idx]
-        exit_price = self.df['open'].iloc[idx]
+        if idx + 1 >= len(self.df):
+            return
+        
+        exit_time = self.df['time'].iloc[idx + 1]
+        exit_price = self.df['open'].iloc[idx + 1]
         
         # 損益計算
         if self.current_position == 'long':
@@ -227,20 +277,55 @@ class BacktestEngine:image.png
         self.calculate_ha_color()
         self.calculate_ha_body()
         
-        # 1本ずつ処理
+        # 1本ずつ処理（CLI版と同じ順序：決済→エントリー）
         for idx in range(len(self.df)):
+            # 決済チェック（先に決済）
+            if self.current_position == 'long' and self.check_long_exit(idx):
+                self.exit_position(idx)
+            elif self.current_position == 'short' and self.check_short_exit(idx):
+                self.exit_position(idx)
+            
+            # エントリーチェック（決済後にエントリー）
             if self.current_position is None:
-                # エントリーチェック
                 if self.check_long_entry(idx):
                     self.enter_position(idx, 'long')
                 elif self.check_short_entry(idx):
                     self.enter_position(idx, 'short')
+        
+        # 未決済ポジションの強制決済（CLI版と同じ処理）
+        if self.current_position is not None and len(self.df) > 0:
+            last_idx = len(self.df) - 1
+            exit_price = self.df['close'].iloc[last_idx]
+            exit_time = self.df['time'].iloc[last_idx]
+            
+            if self.current_position == 'long':
+                pips = (exit_price - self.entry_price) * 100
             else:
-                # 決済チェック
-                if self.current_position == 'long' and self.check_long_exit(idx):
-                    self.exit_position(idx)
-                elif self.current_position == 'short' and self.check_short_exit(idx):
-                    self.exit_position(idx)
+                pips = (self.entry_price - exit_price) * 100
+            
+            trade = {
+                'entry_time': self.entry_time,
+                'exit_time': exit_time,
+                'direction': self.current_position,
+                'entry_price': self.entry_price,
+                'exit_price': exit_price,
+                'pips': pips
+            }
+            self.trades.append(trade)
+            
+            # 統計更新
+            self.total_pips += pips
+            if pips > 0:
+                self.win_count += 1
+                self.total_win_pips += pips
+            else:
+                self.loss_count += 1
+                self.total_loss_pips += abs(pips)
+            
+            # ポジションクリア
+            self.current_position = None
+            self.entry_time = None
+            self.entry_price = None
                     
     def calculate_metrics(self):
         """パフォーマンス指標を計算"""
@@ -284,7 +369,7 @@ class BacktestEngine:image.png
 
 st.set_page_config(page_title=STRATEGY_NAME, layout="wide")
 
-st.title(f"📊 {STRATEGY_NAME} バックテスト可視化")
+st.title(f"📊 {STRATEGY_NAME} バックテスト結果")
 
 # サイドバー
 st.sidebar.header("設定")
@@ -324,7 +409,6 @@ if 'bt' in st.session_state and 'metrics' in st.session_state:
     metrics = st.session_state['metrics']
     
     # パフォーマンス指標
-    st.header("📈 パフォーマンス指標")
     
     col1, col2, col3, col4, col5 = st.columns(5)
     
@@ -343,12 +427,21 @@ if 'bt' in st.session_state and 'metrics' in st.session_state:
     with col5:
         st.metric("PF", f"{metrics['profit_factor']:.2f}")
     
+    # チャート高さ調整
+    chart_height = st.slider(
+        "チャート高さ (px)",
+        min_value=400,
+        max_value=1200,
+        value=600,
+        step=50,
+        key="chart_height_main"
+    )
+    
     # チャート
-    st.header("📊 チャート")
     
     fig = go.Figure()
     
-    # ローソク足
+    # ローソク足（ダークテーマ：上昇=緑、下落=赤）
     fig.add_trace(go.Candlestick(
         x=bt.df['time'],
         open=bt.df['open'],
@@ -356,8 +449,10 @@ if 'bt' in st.session_state and 'metrics' in st.session_state:
         low=bt.df['low'],
         close=bt.df['close'],
         name='ローソク足',
-        increasing_line_color='cyan',
-        decreasing_line_color='pink'
+        increasing_line_color='#26a69a',
+        decreasing_line_color='#ef5350',
+        increasing_fillcolor='#26a69a',
+        decreasing_fillcolor='#ef5350'
     ))
     
     # 75SMA
@@ -397,14 +492,25 @@ if 'bt' in st.session_state and 'metrics' in st.session_state:
         ))
     
     fig.update_layout(
-        title=f"{STRATEGY_NAME} バックテスト結果",
         xaxis_title="日時",
         yaxis_title="価格",
-        height=600,
-        hovermode='x unified'
+        height=chart_height,
+        hovermode='x unified',
+        uirevision='constant',  # スライダー操作時もズーム状態を保持
+        plot_bgcolor='#1e1e1e',
+        paper_bgcolor='#1e1e1e',
+        font=dict(color='#e0e0e0'),
+        xaxis=dict(
+            gridcolor='#2d2d2d',
+            color='#e0e0e0'
+        ),
+        yaxis=dict(
+            gridcolor='#2d2d2d',
+            color='#e0e0e0'
+        )
     )
     
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, use_container_width=True, key="main_chart")
     
     # 取引一覧
     st.header("📋 取引一覧")
