@@ -365,7 +365,7 @@ class BacktestEngine:
             'max_drawdown': max_dd
         }
 
-def create_lightweight_chart(df, trades, chart_height=600):
+def create_lightweight_chart(df, trades, chart_height=600, jump_to=None):
     """TradingView Lightweight Chartsを生成"""
     
     # 平均足データを準備（UNIXタイムスタンプに変換）
@@ -411,17 +411,14 @@ def create_lightweight_chart(df, trades, chart_height=600):
             'text': ''
         })
         
-        # 決済（◎利確、✖損切り）
-        # TODO: Lightweight Chartsの仕様上、●と◎✖が重なって表示されてしまう
-        # shapeを消してtextだけにする方法が不明。とりあえずこのまま残す
+        # 決済：利確＝circle（緑）、損切り＝square（赤）。テキストは空にして二重表示を防ぐ
         is_profit = trade['pips'] > 0
         markers.append({
             'time': exit_time,
             'position': 'aboveBar' if trade['direction'] == 'long' else 'belowBar',
             'color': '#4CAF50' if is_profit else '#f23645',
-            'shape': 'circle',
-            'text': '◎' if is_profit else '✖',
-            'size': 0.1  # ●を極小にして目立たなくする
+            'shape': 'circle' if is_profit else 'square',
+            'text': ''
         })
     
     # JSONに変換
@@ -463,6 +460,17 @@ def create_lightweight_chart(df, trades, chart_height=600):
                     background: {{ color: '#1e1e1e' }},
                     textColor: '#d1d4dc',
                 }},
+                localization: {{
+                    timeFormatter: (businessDayOrTimestamp) => {{
+                        const date = new Date(businessDayOrTimestamp * 1000);
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const hours = String(date.getHours()).padStart(2, '0');
+                        const minutes = String(date.getMinutes()).padStart(2, '0');
+                        return `${{year}}/${{month}}/${{day}} ${{hours}}:${{minutes}}`;
+                    }}
+                }},
                 grid: {{
                     vertLines: {{ color: '#2B2B43' }},
                     horzLines: {{ color: '#363C4E' }},
@@ -477,6 +485,10 @@ def create_lightweight_chart(df, trades, chart_height=600):
                     borderColor: '#2B2B43',
                     timeVisible: true,
                     secondsVisible: false,
+                    localization: {{
+                        locale: 'en-US',
+                        dateFormat: 'yyyy/MM/dd',
+                    }},
                 }},
             }});
 
@@ -526,10 +538,46 @@ def create_lightweight_chart(df, trades, chart_height=600):
 
             // 自動フィット（エラーハンドリング追加）
             try {{
-                chart.timeScale().fitContent();
-                console.log('Chart rendering complete');
+                // 日時ジャンプが指定されている場合
+                const jumpTimestamp = {int(pd.Timestamp(jump_to).timestamp()) if jump_to and jump_to is not None else 'null'};
+                console.log('=== DEBUG INFO ===');
+                console.log('Jump timestamp:', jumpTimestamp);
+                
+                if (jumpTimestamp !== null) {{
+                    console.log('Jump date (UTC):', new Date(jumpTimestamp * 1000).toUTCString());
+                    console.log('Jump date (local):', new Date(jumpTimestamp * 1000).toLocaleString());
+                    
+                    // データの範囲を確認
+                    const firstCandle = candleData[0];
+                    const lastCandle = candleData[candleData.length - 1];
+                    console.log('Data range:', {{
+                        first: new Date(firstCandle.time * 1000).toLocaleString(),
+                        last: new Date(lastCandle.time * 1000).toLocaleString()
+                    }});
+                    
+                    // ジャンプ先の前後24時間を表示範囲に設定（2日分）
+                    const twentyFourHoursSeconds = 24 * 60 * 60;
+                    const fromTime = jumpTimestamp - twentyFourHoursSeconds;
+                    const toTime = jumpTimestamp + twentyFourHoursSeconds;
+                    
+                    console.log('Setting visible range:', {{
+                        from: new Date(fromTime * 1000).toLocaleString(),
+                        to: new Date(toTime * 1000).toLocaleString()
+                    }});
+                    
+                    chart.timeScale().setVisibleRange({{
+                        from: fromTime,
+                        to: toTime,
+                    }});
+                    
+                    console.log('✅ Jump completed!');
+                }} else {{
+                    console.log('No jump target, fitting content');
+                    chart.timeScale().fitContent();
+                }}
+                console.log('=== END DEBUG ===');
             }} catch(e) {{
-                console.error('Fit content error:', e);
+                console.error('❌ Error:', e);
             }}
             }}, 100);  // 100ms待機
         </script>
@@ -566,16 +614,7 @@ else:
     st.error("dataフォルダが見つかりません")
     st.stop()
 
-# チャート高さ設定
-chart_height = st.sidebar.slider(
-    "チャート高さ (px)",
-    min_value=400,
-    max_value=1200,
-    value=600,
-    step=50
-)
-
-# バックテスト実行ボタン
+# バックテスト実行ボタン（上に移動）
 if st.sidebar.button("バックテスト実行", type="primary"):
     with st.spinner("バックテスト実行中..."):
         # バックテスト実行
@@ -586,6 +625,46 @@ if st.sidebar.button("バックテスト実行", type="primary"):
         # 結果を session_state に保存
         st.session_state['bt'] = bt
         st.session_state['metrics'] = metrics
+
+# 日時ジャンプ設定
+# チャート高さは固定（600px）
+chart_height = 600
+st.sidebar.header("日時ジャンプ")
+jump_date = st.sidebar.date_input(
+    "日付を選択",
+    value=None,
+    help="チャートをこの日付にジャンプします"
+)
+jump_time = st.sidebar.time_input(
+    "時刻を選択",
+    value=None,
+    help="ジャンプ先の時刻"
+)
+if st.sidebar.button("この日時にジャンプ", type="secondary"):
+    if 'bt' not in st.session_state:
+        st.sidebar.error("先に「バックテスト実行」を押してください")
+    elif jump_date and jump_time:
+        # 日時を結合してsession_stateに保存
+        jump_datetime = pd.Timestamp.combine(jump_date, jump_time)
+        st.session_state['jump_to'] = jump_datetime
+        st.sidebar.success(f"ジャンプ設定: {jump_datetime}")
+        # ページを再実行してチャートを再描画
+        st.rerun()
+    else:
+        st.sidebar.warning("日付と時刻を選択してください")
+
+# デバッグ情報
+st.sidebar.header("🐛 デバッグ情報")
+if 'jump_to' in st.session_state:
+    st.sidebar.info(f"現在のジャンプ先: {st.session_state['jump_to']}")
+    st.sidebar.code(f"タイムスタンプ: {int(pd.Timestamp(st.session_state['jump_to']).timestamp())}")
+else:
+    st.sidebar.info("ジャンプ先: 未設定")
+    
+if 'bt' in st.session_state:
+    st.sidebar.info(f"データ期間: {st.session_state['bt'].df['time'].min()} ～ {st.session_state['bt'].df['time'].max()}")
+else:
+    st.sidebar.info("バックテスト: 未実行")
 
 # 結果表示
 if 'bt' in st.session_state and 'metrics' in st.session_state:
@@ -613,7 +692,10 @@ if 'bt' in st.session_state and 'metrics' in st.session_state:
     # Lightweight Chartsチャート
     st.subheader("📈 チャート（平均足 + 75SMA）")
     
-    html_code = create_lightweight_chart(bt.df, bt.trades, chart_height)
+    # ジャンプ先の日時を取得
+    jump_to = st.session_state.get('jump_to', None)
+    
+    html_code = create_lightweight_chart(bt.df, bt.trades, chart_height, jump_to)
     components.html(html_code, height=chart_height + 50, scrolling=True)
     
     # 取引一覧
