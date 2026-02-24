@@ -15,18 +15,22 @@ STRATEGY_NAME = "R氏 平均足75SMA手法"
 class BacktestEngine:
     """バックテストエンジン"""
     
-    def __init__(self, csv_path, spread_pips=0, slippage_pips=0):
+    def __init__(self, csv_path, spread_pips=0, slippage_pips=0, pip_multiplier=100, pip_unit="pips"):
         """
         初期化
-        
+
         Args:
             csv_path: CSVファイルパス
             spread_pips: スプレッド (pips) ※将来の拡張用
             slippage_pips: スリッページ (pips) ※将来の拡張用
+            pip_multiplier: pips換算倍率（JPYペア=100, Gold=1, EURペア=10000）
+            pip_unit: 表示単位
         """
         self.csv_path = csv_path
         self.spread_pips = spread_pips
         self.slippage_pips = slippage_pips
+        self.pip_multiplier = pip_multiplier
+        self.pip_unit = pip_unit
         
         # データ
         self.df = None
@@ -241,9 +245,9 @@ class BacktestEngine:
         
         # 損益計算
         if self.current_position == 'long':
-            pips = (exit_price - self.entry_price) * 100
+            pips = (exit_price - self.entry_price) * self.pip_multiplier
         else:  # short
-            pips = (self.entry_price - exit_price) * 100
+            pips = (self.entry_price - exit_price) * self.pip_multiplier
             
         # トレード記録
         self.trades.append({
@@ -299,9 +303,9 @@ class BacktestEngine:
             exit_time = self.df['time'].iloc[last_idx]
             
             if self.current_position == 'long':
-                pips = (exit_price - self.entry_price) * 100
+                pips = (exit_price - self.entry_price) * self.pip_multiplier
             else:
-                pips = (self.entry_price - exit_price) * 100
+                pips = (self.entry_price - exit_price) * self.pip_multiplier
             
             trade = {
                 'entry_time': self.entry_time,
@@ -614,11 +618,33 @@ else:
     st.error("dataフォルダが見つかりません")
     st.stop()
 
+# pip換算タイプ選択
+pip_type_options = {
+    "×1　USD（Gold / Silver / 原油など）": (1, "USD"),
+    "×100　pips（USD/JPY等）": (100, "pips"),
+    "×10000　pips（EUR/USD等）": (10000, "pips"),
+}
+
+def detect_pip_type(filename):
+    name = filename.lower()
+    if any(x in name for x in ['gold', 'xau', 'silver', 'xag', 'oil', 'wti', 'cl']):
+        return "×1　USD（Gold / Silver / 原油など）"
+    elif 'jpy' in name:
+        return "×100　pips（USD/JPY等）"
+    else:
+        return "×100　pips（USD/JPY等）"
+
+pip_type_names = list(pip_type_options.keys())
+auto_detected = detect_pip_type(selected_file)
+default_index = pip_type_names.index(auto_detected)
+selected_pip_type = st.sidebar.selectbox("pip換算タイプ", pip_type_names, index=default_index)
+pip_multiplier, pip_unit = pip_type_options[selected_pip_type]
+
 # バックテスト実行ボタン（上に移動）
 if st.sidebar.button("バックテスト実行", type="primary"):
     with st.spinner("バックテスト実行中..."):
         # バックテスト実行
-        bt = BacktestEngine(str(csv_path))
+        bt = BacktestEngine(str(csv_path), pip_multiplier=pip_multiplier, pip_unit=pip_unit)
         bt.run()
         metrics = bt.calculate_metrics()
         
@@ -674,18 +700,19 @@ if 'bt' in st.session_state and 'metrics' in st.session_state:
     # パフォーマンス指標
     col1, col2, col3, col4, col5 = st.columns(5)
     
+    unit = bt.pip_unit
     with col1:
-        st.metric("総損益", f"{metrics['total_pips']:.2f} pips")
-    
+        st.metric("総損益", f"{metrics['total_pips']:.2f} {unit}")
+
     with col2:
         st.metric("取引回数", f"{metrics['total_trades']}回")
-    
+
     with col3:
         st.metric("勝率", f"{metrics['win_rate']:.2f}%")
-    
+
     with col4:
-        st.metric("最大DD", f"{metrics['max_drawdown']:.2f} pips")
-    
+        st.metric("最大DD", f"{metrics['max_drawdown']:.2f} {unit}")
+
     with col5:
         st.metric("PF", f"{metrics['profit_factor']:.2f}")
     
@@ -704,13 +731,17 @@ if 'bt' in st.session_state and 'metrics' in st.session_state:
     if bt.trades:
         trades_df = pd.DataFrame(bt.trades)
         trades_df['cumulative_pips'] = trades_df['pips'].cumsum()
-        
+        trades_df = trades_df.rename(columns={
+            'pips': bt.pip_unit,
+            'cumulative_pips': f'累積{bt.pip_unit}'
+        })
+
         st.dataframe(
             trades_df.style.format({
                 'entry_price': '{:.3f}',
                 'exit_price': '{:.3f}',
-                'pips': '{:.2f}',
-                'cumulative_pips': '{:.2f}'
+                bt.pip_unit: '{:.2f}',
+                f'累積{bt.pip_unit}': '{:.2f}'
             }),
             width='stretch'
         )
