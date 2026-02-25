@@ -1,9 +1,8 @@
 # CLAUDE.md — fx_trading_bot
 
-## コミュニケーションスタイル
-- **日本語で応答すること**
-- **必ず敬語（です・ます調）を使うこと**
-- 作業前に不明点があれば先に質問してから手を動かす
+## ユーザー指示
+
+- 「Obsidianに書いといて」と言われたら、`C:\Users\tf10c\Dropbox\ObsidianVault\EA.md` の `## やったこと` セクションの今日の日付（`## YYYY-MM-DD`）に箇条書きで追記する
 
 ## プロジェクト概要
 R氏の「平均足 + 75SMA」手法のバックテスト・シグナル検出システム。
@@ -68,3 +67,27 @@ python entry_logic.py
 OANDA_DEMO_API_TOKEN=your_token
 OANDA_DEMO_ACCOUNT_ID=your_account_id
 ```
+
+## コーディング規約（streamlit_app_lightweight.py）
+
+### 定数
+ファイル先頭の定数を使うこと。ハードコードしない。
+
+| 定数 | 値 | 用途 |
+|------|-----|------|
+| `SMA_PERIOD` | `75` | SMA期間 |
+| `COLOR_PROFIT` | `#4CAF50` | 利益・プラス表示（緑） |
+| `COLOR_LOSS` | `#f23645` | 損失・マイナス表示（赤） |
+| `COLOR_LONG` | `#26a69a` | ロング・エントリー方向（緑） |
+| `COLOR_SHORT` | `#ef5350` | ショート・決済方向（赤） |
+| `COLOR_ENTRY_MARKER` | `#2196F3` | エントリーマーカー（青） |
+| `COLOR_CLICK_LINE` | `#ffff00` | クリック縦線（黄） |
+
+### タイムスタンプ変換
+`calendar.timegm(ts.timetuple())` を使う。`.timestamp()` はタイムゾーンの影響を受けるので使わない。
+
+### ループ
+取引データ（trades）のループは1つにまとめる。テーブルHTML生成とJS用JSONデータ生成は同じループ内で行う。
+
+### デバッグコード
+`console.log` はコミット前に削除する。デバッグ用のサイドバーセクションも残さない。
