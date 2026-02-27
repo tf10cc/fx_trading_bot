@@ -9,6 +9,7 @@ import streamlit.components.v1 as components
 from pathlib import Path
 import json
 import calendar
+import importlib.util
 
 # ========== 定数定義 ==========
 STRATEGY_NAME = "R氏 平均足75SMA手法"
@@ -25,7 +26,7 @@ COLOR_CLICK_LINE   = '#ffff00'  # クリック縦線（黄）
 class BacktestEngine:
     """バックテストエンジン"""
     
-    def __init__(self, csv_path, spread_pips=0, slippage_pips=0, pip_multiplier=100, pip_unit="pips"):
+    def __init__(self, csv_path, logic_module, spread_pips=0, slippage_pips=0, pip_multiplier=100, pip_unit="pips"):
         """
         初期化
 
@@ -41,7 +42,8 @@ class BacktestEngine:
         self.slippage_pips = slippage_pips
         self.pip_multiplier = pip_multiplier
         self.pip_unit = pip_unit
-        
+        self.logic_module = logic_module
+
         # データ
         self.df = None
         
@@ -148,93 +150,17 @@ class BacktestEngine:
         self.df['ha_body_top'] = self.df[['ha_open', 'ha_close']].max(axis=1)
         self.df['ha_body_bottom'] = self.df[['ha_open', 'ha_close']].min(axis=1)
         
-    def check_trend(self, idx, lookback=5):
-        """トレンドをチェック"""
-        if idx < lookback:
-            return False, None
-            
-        current_sma = self.df['sma'].iloc[idx]
-        past_sma = self.df['sma'].iloc[idx - lookback]
-        
-        if pd.isna(current_sma) or pd.isna(past_sma):
-            return False, None
-            
-        if current_sma > past_sma:
-            return True, 'up'
-        elif current_sma < past_sma:
-            return True, 'down'
-        else:
-            return False, None
-            
     def check_long_entry(self, idx):
-        """ロングエントリー条件"""
-        if idx < 1:
-            return False
-            
-        # トレンドチェック
-        has_trend, trend_direction = self.check_trend(idx)
-        if not has_trend or trend_direction != 'up':
-            return False
-            
-        # 平均足の色が赤→青に変化
-        prev_color = self.df['ha_color'].iloc[idx - 1]
-        curr_color = self.df['ha_color'].iloc[idx]
-        
-        if prev_color == -1 and curr_color == 1:
-            # 平均足の実体下限がSMAより上
-            ha_body_bottom = self.df['ha_body_bottom'].iloc[idx]
-            sma = self.df['sma'].iloc[idx]
-            
-            if not pd.isna(sma) and ha_body_bottom > sma:
-                return True
-                
-        return False
-        
+        return self.logic_module.check_long_entry(self.df, idx)
+
     def check_short_entry(self, idx):
-        """ショートエントリー条件"""
-        if idx < 1:
-            return False
-            
-        # トレンドチェック
-        has_trend, trend_direction = self.check_trend(idx)
-        if not has_trend or trend_direction != 'down':
-            return False
-            
-        # 平均足の色が青→赤に変化
-        prev_color = self.df['ha_color'].iloc[idx - 1]
-        curr_color = self.df['ha_color'].iloc[idx]
-        
-        if prev_color == 1 and curr_color == -1:
-            # 平均足の実体上限がSMAより下
-            ha_body_top = self.df['ha_body_top'].iloc[idx]
-            sma = self.df['sma'].iloc[idx]
-            
-            if not pd.isna(sma) and ha_body_top < sma:
-                return True
-                
-        return False
-        
+        return self.logic_module.check_short_entry(self.df, idx)
+
     def check_long_exit(self, idx):
-        """ロング決済条件"""
-        if idx < 1:
-            return False
-            
-        # 平均足の色が青→赤に変化
-        prev_color = self.df['ha_color'].iloc[idx - 1]
-        curr_color = self.df['ha_color'].iloc[idx]
-        
-        return prev_color == 1 and curr_color == -1
-        
+        return self.logic_module.check_long_exit(self.df, idx)
+
     def check_short_exit(self, idx):
-        """ショート決済条件"""
-        if idx < 1:
-            return False
-            
-        # 平均足の色が赤→青に変化
-        prev_color = self.df['ha_color'].iloc[idx - 1]
-        curr_color = self.df['ha_color'].iloc[idx]
-        
-        return prev_color == -1 and curr_color == 1
+        return self.logic_module.check_short_exit(self.df, idx)
         
     def enter_position(self, idx, direction):
         """エントリー"""
@@ -771,6 +697,30 @@ else:
     st.error("dataフォルダが見つかりません")
     st.stop()
 
+# ロジック選択
+logics_dir = base_dir / "logics"
+logic_files = sorted(logics_dir.glob("*.py")) if logics_dir.exists() else []
+
+def load_logic_module(path):
+    spec = importlib.util.spec_from_file_location("logic", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+logic_modules = {f.stem: load_logic_module(f) for f in logic_files}
+logic_display_names = {f.stem: getattr(load_logic_module(f), 'NAME', f.stem) for f in logic_files}
+
+if not logic_modules:
+    st.error("logicsフォルダにロジックファイルが見つかりません")
+    st.stop()
+
+selected_logic_key = st.sidebar.selectbox(
+    "ロジックを選択",
+    list(logic_modules.keys()),
+    format_func=lambda k: logic_display_names[k]
+)
+selected_logic = logic_modules[selected_logic_key]
+
 # pip換算タイプ選択
 pip_type_options = {
     "×1　USD（Gold / Silver / 原油など）": (1, "USD"),
@@ -797,7 +747,7 @@ pip_multiplier, pip_unit = pip_type_options[selected_pip_type]
 if st.sidebar.button("バックテスト実行", type="primary"):
     with st.spinner("バックテスト実行中..."):
         # バックテスト実行
-        bt = BacktestEngine(str(csv_path), pip_multiplier=pip_multiplier, pip_unit=pip_unit)
+        bt = BacktestEngine(str(csv_path), logic_module=selected_logic, pip_multiplier=pip_multiplier, pip_unit=pip_unit)
         bt.run()
         metrics = bt.calculate_metrics()
         

@@ -2,7 +2,9 @@
 
 ## ユーザー指示
 
-- 「Obsidianに書いといて」と言われたら、`C:\Users\tf10c\Dropbox\ObsidianVault\EA.md` の `## やったこと` セクションの今日の日付（`## YYYY-MM-DD`）に箇条書きで追記する
+- **会話開始時は必ず `C:\Users\tf10c\Dropbox\ObsidianVault\EA.md` を全文読み、「やったこと」の全体像と「やること」リストを把握してから応答すること**
+- 「Obsidianに書いといて」と言われたら、`C:\Users\tf10c\Dropbox\ObsidianVault\EA.md` の `## やったこと` セクションの今日の日付（`## YYYY-MM-DD`）に箇条書きで追記する（内容を先に見せて確認を取ること）
+- デモ・試作・雑多なファイル（SVGサンプル、HTML実験など）は `etc/` フォルダに入れること
 
 ## プロジェクト概要
 R氏の「平均足 + 75SMA」手法のバックテスト・シグナル検出システム。
