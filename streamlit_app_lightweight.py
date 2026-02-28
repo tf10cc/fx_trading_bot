@@ -1,5 +1,5 @@
 """
-R氏 平均足75SMA手法 バックテストシステム（TradingView Lightweight Charts版）
+FES — Fushimi EA System バックテストシステム（TradingView Lightweight Charts版）
 """
 
 import streamlit as st
