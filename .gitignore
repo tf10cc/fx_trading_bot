@@ -16,5 +16,8 @@ __pycache__/
 
 # OS関連
 .DS_Store
-Thumbs.dbCLAUDE.md
+Thumbs.db
+
+# Claude Code・開発ツール設定
+CLAUDE.md
 .cursorrules
