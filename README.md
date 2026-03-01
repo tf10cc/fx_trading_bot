@@ -67,11 +67,14 @@ pip install -r requirements.txt
 
 ### 5. 起動
 
-```bash
-streamlit run streamlit_app_lightweight.py
-```
+`■run_streamlit_lightweight.bat` をダブルクリックしてください。
 
 ブラウザで `http://localhost:8501` が開きます。
+
+> コマンドラインから起動する場合：
+> ```bash
+> streamlit run streamlit_app_lightweight.py
+> ```
 
 ---
 
