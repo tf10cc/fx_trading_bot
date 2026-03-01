@@ -136,23 +136,13 @@ def check_short_exit(df, idx):
 
 ---
 
-## OANDAライブシグナル（オプション）
+## OANDAライブシグナル（開発予定）
 
-リアルタイムのシグナル判定には OANDA のデモ口座が必要です。
-
-`.env` ファイルをプロジェクトルートに作成してください：
-
-```env
-OANDA_DEMO_API_TOKEN=your_token
-OANDA_DEMO_ACCOUNT_ID=your_account_id
-```
-
-```bash
-python entry_logic.py
-```
+> ⚠️ 現在未実装・開発予定の機能です。
 
 ---
 
 ## ライセンス
 
-MIT License
+MIT License — コピー・改変・商用利用 自由。
+ただし **FES（Fushimi EA System）** の著作権表示を残してください。
