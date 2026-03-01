@@ -36,13 +36,15 @@ cd fx_trading_bot
 
 ### 2. 仮想環境を作成・有効化
 
+**Windows:**
 ```bash
 python -m venv .venv
-
-# Windows
 .\.venv\Scripts\Activate.ps1
+```
 
-# Mac/Linux
+**Mac/Linux:**
+```bash
+python -m venv .venv
 source .venv/bin/activate
 ```
 
