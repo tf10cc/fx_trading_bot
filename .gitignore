@@ -21,3 +21,7 @@ Thumbs.db
 # Claude Code・開発ツール設定
 CLAUDE.md
 .cursorrules
+
+# CSVデータ（サンプル1件以外は除外）
+data/*.csv
+!data/gold_1H_202601-30.csv
