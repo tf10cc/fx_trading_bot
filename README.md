@@ -54,9 +54,11 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. CSVデータを用意
+### 4. CSVデータについて
 
-`data/` フォルダに過去データのCSVを置いてください。
+サンプルデータ（ゴールド2026年1月分）が同梱されており、クローン直後からすぐ動作確認できます。
+
+追加の過去データを使いたい場合は `data/` フォルダに置いてください。
 
 対応フォーマット：
 - **Forex Tester形式**: `TICKER`, `DTYYYYMMDD`, `TIME` カラムあり
