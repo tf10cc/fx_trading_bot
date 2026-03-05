@@ -4,6 +4,7 @@ R氏 平均足75SMA手法
 import pandas as pd
 
 NAME = "R氏 平均足75SMA"
+GRANULARITY = "H1"  # 足の種類（H1 = 1時間足）
 
 
 def check_long_entry(df, idx):
