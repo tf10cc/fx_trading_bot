@@ -5,6 +5,7 @@ import pandas as pd
 
 NAME = "R氏 平均足75SMA"
 GRANULARITY = "H1"  # 足の種類（H1 = 1時間足）
+COUNT = 200         # 必要な取得本数（SMA75 + 傾き判定5本 + バッファ）
 
 
 def check_long_entry(df, idx):

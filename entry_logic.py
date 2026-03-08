@@ -1,166 +1,162 @@
+"""
+FES entry_logic.py  ライブトレード（書き直し版）
+
+起動方法:
+  python entry_logic.py                          # デフォルト: logics/heikin_ashi_75sma.py
+  python entry_logic.py logics/my_strategy.py   # カセット指定
+"""
+
 import os
-from dotenv import load_dotenv
-import requests
+import sys
+import time
+import importlib.util
+from datetime import datetime, timezone
+
 import pandas as pd
-from heikin_ashi import calculate_heikin_ashi
+from dotenv import load_dotenv
 
-# .env 読み込み
-load_dotenv()
+from heikin_ashi import fetch_candles
 
-api_token = os.getenv('OANDA_DEMO_API_TOKEN')
+# ---- 定数 ----
+DEFAULT_COUNT      = 200       # カセットに COUNT がない場合のデフォルト取得本数
+DEFAULT_GRANULARITY = 'H1'     # カセットに GRANULARITY がない場合のデフォルト
+DEFAULT_INSTRUMENT  = 'XAU_USD'  # 取引銘柄
+SMA_PERIOD          = 75
 
-def get_sma(instrument='USD_JPY', period=75, count=100):
+
+# ---- カセット読み込み ----
+
+def load_cassette(path):
+    """logics/ フォルダのカセットファイルを読み込む"""
+    spec = importlib.util.spec_from_file_location('cassette', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+# ---- df を作る（OANDAからデータ取得 + 全カラム計算） ----
+
+def build_df(instrument, cassette):
     """
-    指定期間のSMAを計算
+    OANDAからローソク足を取得し、カセットが要求する全カラムを計算して返す。
+
+    カラム: time, open, high, low, close,
+            ha_open, ha_close, ha_high, ha_low, ha_color,
+            ha_body_top, ha_body_bottom, sma
     """
-    url = f"https://api-fxpractice.oanda.com/v3/instruments/{instrument}/candles"
-    
-    params = {
-        "count": count,
-        "granularity": "H1"
-    }
-    
-    headers = {
-        "Authorization": f"Bearer {api_token}"
-    }
-    
-    response = requests.get(url, headers=headers, params=params)
-    
-    if response.status_code != 200:
+    count       = getattr(cassette, 'COUNT',       DEFAULT_COUNT)
+    granularity = getattr(cassette, 'GRANULARITY', DEFAULT_GRANULARITY)
+
+    # OANDAからローソク足取得
+    df = fetch_candles(instrument, granularity=granularity, count=count)
+    if df is None or len(df) < 2:
+        print('❌ データ取得失敗')
         return None
-    
-    data = response.json()
-    
-    candles = []
-    for candle in data['candles']:
-        candles.append({
-            'close': float(candle['mid']['c'])
-        })
-    
-    df = pd.DataFrame(candles)
-    df['SMA'] = df['close'].rolling(window=period).mean()
-    
-    return df['SMA'].iloc[-1], df['close'].iloc[-1]
 
-def check_sma_slope(instrument='USD_JPY', period=75, lookback=5):
-    """
-    SMAが傾いているか確認
-    lookback: 何本前と比較するか
-    """
-    url = f"https://api-fxpractice.oanda.com/v3/instruments/{instrument}/candles"
-    
-    params = {
-        "count": period + lookback + 10,
-        "granularity": "H1"
-    }
-    
-    headers = {
-        "Authorization": f"Bearer {api_token}"
-    }
-    
-    response = requests.get(url, headers=headers, params=params)
-    
-    if response.status_code != 200:
-        return False
-    
-    data = response.json()
-    
-    candles = []
-    for candle in data['candles']:
-        candles.append({
-            'close': float(candle['mid']['c'])
-        })
-    
-    df = pd.DataFrame(candles)
-    df['SMA'] = df['close'].rolling(window=period).mean()
-    
-    # 最新のSMAと5本前のSMAを比較
-    latest_sma = df['SMA'].iloc[-1]
-    prev_sma = df['SMA'].iloc[-1-lookback]
-    
-    slope = latest_sma - prev_sma
-    
-    return slope, slope > 0  # 傾きと上昇中かどうか
+    # 平均足計算
+    ha_close = (df['open'] + df['high'] + df['low'] + df['close']) / 4
+    ha_open  = pd.Series(index=df.index, dtype=float)
+    ha_open.iloc[0] = (df['open'].iloc[0] + df['close'].iloc[0]) / 2
+    for i in range(1, len(df)):
+        ha_open.iloc[i] = (ha_open.iloc[i - 1] + ha_close.iloc[i - 1]) / 2
 
-def entry_signal(instrument='USD_JPY'):
-    """
-    エントリーシグナルを判定
-    
-    Returns:
-    - 'BUY': 買いシグナル
-    - 'SELL': 売りシグナル
-    - 'WAIT': 待機
-    """
-    print(f"=== {instrument} エントリー判定 ===\n")
+    df['ha_open']  = ha_open
+    df['ha_close'] = ha_close
+    df['ha_high']  = pd.concat([df['high'], ha_open, ha_close], axis=1).max(axis=1)
+    df['ha_low']   = pd.concat([df['low'],  ha_open, ha_close], axis=1).min(axis=1)
+    df['ha_color'] = (df['ha_close'] >= df['ha_open']).map(lambda x: 1 if x else -1)
+    df['ha_body_top']    = df[['ha_open', 'ha_close']].max(axis=1)
+    df['ha_body_bottom'] = df[['ha_open', 'ha_close']].min(axis=1)
 
-    if not api_token:
-        print("❌ OANDA_DEMO_API_TOKEN が未設定です（.env を用意してください）")
-        return 'WAIT'
-    
-    # 1. 現在価格と75SMA取得
-    sma_result = get_sma(instrument, period=75)
-    if sma_result is None:
-        print("❌ SMA取得エラー")
-        return 'WAIT'
-    
-    sma75, current_price = sma_result
-    print(f"現在価格: {current_price:.3f}")
-    print(f"75SMA: {sma75:.3f}")
-    
-    # 2. SMAの傾きチェック
-    slope, is_uptrend = check_sma_slope(instrument, period=75)
-    print(f"SMAの傾き: {slope:.3f} ({'上昇' if is_uptrend else '下降'})")
-    
-    # 3. 平均足の色変化チェック
-    df_ha = calculate_heikin_ashi(instrument, granularity="H1", count=200)
-    if df_ha is None:
-        print("❌ 平均足取得エラー")
-        return 'WAIT'
-    
-    latest_ha = df_ha.iloc[-1]
-    prev_ha = df_ha.iloc[-2]
-    
-    ha_color_change = None
-    if prev_ha['ha_color'] == -1 and latest_ha['ha_color'] == 1:
-        ha_color_change = 'RED_TO_BLUE'
-        print("平均足: 🔵 陰線→陽線（買いシグナル）")
-    elif prev_ha['ha_color'] == 1 and latest_ha['ha_color'] == -1:
-        ha_color_change = 'BLUE_TO_RED'
-        print("平均足: 🔴 陽線→陰線（売りシグナル）")
+    # SMA計算
+    df['sma'] = df['close'].rolling(window=SMA_PERIOD).mean()
+
+    return df.reset_index(drop=True)
+
+
+# ---- 1回の判定サイクル ----
+
+def run_once(df, cassette, position):
+    """
+    最新の確定済み足（idx = 末尾から2番目）でカセットを呼び出し、
+    BUY / SELL / EXIT を判定する。
+
+    ※ OANDAは未確定の現在足も返す場合があるため、
+       安全のため末尾-1（1本前の確定足）で判定する。
+
+    Returns: 新しい position ('long' / 'short' / None)
+    """
+    idx = len(df) - 2  # 最新の確定済み足
+
+    if position is None:
+        if cassette.check_long_entry(df, idx):
+            print('✅ BUY シグナル → 注文送信（未実装）')
+            return 'long'
+        elif cassette.check_short_entry(df, idx):
+            print('✅ SELL シグナル → 注文送信（未実装）')
+            return 'short'
+        else:
+            print('⏸️  待機（条件不成立）')
+
     else:
-        print("平均足: ⚪ 色変化なし")
-    
-    # 4. エントリー判定
-    print("\n--- 判定結果 ---")
-    
-    # 買いシグナル判定
-    if (current_price > sma75 and  # 価格がSMAより上
-        is_uptrend and  # SMAが上昇中
-        ha_color_change == 'RED_TO_BLUE'):  # 平均足が陰線→陽線
-        print("✅ 買いエントリー！")
-        return 'BUY'
-    
-    # 売りシグナル判定
-    elif (current_price < sma75 and  # 価格がSMAより下
-          not is_uptrend and  # SMAが下降中
-          ha_color_change == 'BLUE_TO_RED'):  # 平均足が陽線→陰線
-        print("✅ 売りエントリー！")
-        return 'SELL'
-    
-    else:
-        print("⏸️ 待機（条件不成立）")
-        
-        # 何が足りないか表示
-        if current_price <= sma75:
-            print("  - 価格がSMAより下")
-        if not is_uptrend:
-            print("  - SMAが上昇していない")
-        if ha_color_change is None:
-            print("  - 平均足の色変化なし")
-        
-        return 'WAIT'
+        if position == 'long' and cassette.check_long_exit(df, idx):
+            print('🔴 ロング決済 → 決済注文（未実装）')
+            return None
+        elif position == 'short' and cassette.check_short_exit(df, idx):
+            print('🔵 ショート決済 → 決済注文（未実装）')
+            return None
+        else:
+            print(f'📊 ポジション保有中（{position}）')
 
-# テスト実行
-if __name__ == "__main__":
-    signal = entry_signal('USD_JPY')
-    print(f"\n最終判定: {signal}")
+    return position
+
+
+# ---- メインループ（毎時0分に実行） ----
+
+def main_loop(cassette, instrument=DEFAULT_INSTRUMENT):
+    position = None  # 現在のポジション（None / 'long' / 'short'）
+
+    print(f'FES ライブトレード起動')
+    print(f'カセット  : {getattr(cassette, "NAME", "不明")}')
+    print(f'銘柄      : {instrument}')
+    print(f'足の種類  : {getattr(cassette, "GRANULARITY", DEFAULT_GRANULARITY)}')
+    print(f'取得本数  : {getattr(cassette, "COUNT", DEFAULT_COUNT)}')
+
+    while True:
+        now = datetime.now(timezone.utc)
+        print(f'\n{"=" * 40}')
+        print(f'[{now.strftime("%Y-%m-%d %H:%M")} UTC] 判定開始')
+
+        df = build_df(instrument, cassette)
+        if df is not None:
+            position = run_once(df, cassette, position)
+        else:
+            print('データ取得エラー。次の時間まで待機します')
+
+        # 次の時間0分まで待機
+        wait_seconds = 3600 - (now.minute * 60 + now.second)
+        print(f'次の判定まで {wait_seconds // 60} 分 {wait_seconds % 60} 秒待機...')
+        time.sleep(wait_seconds)
+
+
+# ---- 起動 ----
+
+if __name__ == '__main__':
+    sys.stdout.reconfigure(encoding='utf-8')
+    load_dotenv()
+
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    cassette_path = args[0] if args else 'logics/heikin_ashi_75sma.py'
+    if not os.path.exists(cassette_path):
+        print(f'[ERROR] カセットファイルが見つかりません: {cassette_path}')
+        sys.exit(1)
+
+    cassette = load_cassette(cassette_path)
+
+    if '--test' in sys.argv:
+        print('【テストモード】1回だけ実行して終了')
+        df = build_df(DEFAULT_INSTRUMENT, cassette)
+        if df is not None:
+            run_once(df, cassette, None)
+    else:
+        main_loop(cassette)
