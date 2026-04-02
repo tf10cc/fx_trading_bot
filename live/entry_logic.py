@@ -237,7 +237,7 @@ if __name__ == '__main__':
     load_dotenv()
 
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
-    cassette_path = args[0] if args else '../logics/heikin_ashi_75sma.py'
+    cassette_path = args[0] if args else str(Path(__file__).parent.parent / 'logics' / 'heikin_ashi_75sma.py')
     if not os.path.exists(cassette_path):
         print(f'[ERROR] カセットファイルが見つかりません: {cassette_path}')
         sys.exit(1)
