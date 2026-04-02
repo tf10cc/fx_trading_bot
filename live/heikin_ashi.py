@@ -77,39 +77,3 @@ def fetch_candles(
     df = df.dropna(subset=["time"]).reset_index(drop=True)
     return df
 
-
-def calculate_heikin_ashi(
-    instrument: str,
-    *,
-    granularity: str = "H1",
-    count: int = 200,
-    config: Optional[OandaConfig] = None,
-) -> Optional[pd.DataFrame]:
-    """
-    OANDA Practiceのデータから平均足を計算する。
-
-    Returns:
-        DataFrame: time, open, high, low, close, ha_open, ha_close, ha_high, ha_low, ha_color
-        ha_color: 青=1, 赤=-1
-    """
-    df = fetch_candles(instrument, granularity=granularity, count=count, config=config)
-    if df is None or len(df) < 2:
-        return None
-
-    ha_close = (df["open"] + df["high"] + df["low"] + df["close"]) / 4
-    ha_open = pd.Series(index=df.index, dtype=float)
-    ha_open.iloc[0] = (df["open"].iloc[0] + df["close"].iloc[0]) / 2
-    for i in range(1, len(df)):
-        ha_open.iloc[i] = (ha_open.iloc[i - 1] + ha_close.iloc[i - 1]) / 2
-
-    ha_high = pd.concat([df["high"], ha_open, ha_close], axis=1).max(axis=1)
-    ha_low = pd.concat([df["low"], ha_open, ha_close], axis=1).min(axis=1)
-
-    out = df.copy()
-    out["ha_open"] = ha_open
-    out["ha_close"] = ha_close
-    out["ha_high"] = ha_high
-    out["ha_low"] = ha_low
-    out["ha_color"] = (out["ha_close"] >= out["ha_open"]).map(lambda x: 1 if x else -1)
-    return out
-

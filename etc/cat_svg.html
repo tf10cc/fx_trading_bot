@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>SVG猫</title>
+</head>
+<body style="background:#e8e0d5; display:flex; justify-content:center; align-items:center; min-height:100vh; margin:0">
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 480" width="400"
+  style="background:#fdf6e3; border-radius:16px; box-shadow:0 6px 30px rgba(0,0,0,0.25)">
+
+  <!-- しっぽ（体の後ろに描く） -->
+  <path d="M 268,372 C 345,350 360,275 330,228 C 312,198 284,208 290,242"
+    fill="none" stroke="#9e9e9e" stroke-width="22" stroke-linecap="round"/>
+  <!-- しっぽの先（白） -->
+  <circle cx="291" cy="241" r="13" fill="#e0e0e0"/>
+
+  <!-- 体 -->
+  <ellipse cx="200" cy="330" rx="78" ry="85" fill="#9e9e9e"/>
+
+  <!-- 前足 -->
+  <ellipse cx="162" cy="408" rx="32" ry="15" fill="#9e9e9e"/>
+  <ellipse cx="238" cy="408" rx="32" ry="15" fill="#9e9e9e"/>
+  <!-- 足の指 -->
+  <circle cx="148" cy="414" r="6" fill="#bdbdbd"/>
+  <circle cx="162" cy="416" r="6" fill="#bdbdbd"/>
+  <circle cx="176" cy="414" r="6" fill="#bdbdbd"/>
+  <circle cx="224" cy="414" r="6" fill="#bdbdbd"/>
+  <circle cx="238" cy="416" r="6" fill="#bdbdbd"/>
+  <circle cx="252" cy="414" r="6" fill="#bdbdbd"/>
+
+  <!-- 頭 -->
+  <ellipse cx="200" cy="178" rx="68" ry="63" fill="#9e9e9e"/>
+
+  <!-- 耳（外・グレー） -->
+  <polygon points="140,142 158,72 192,136" fill="#9e9e9e"/>
+  <polygon points="208,136 242,72 260,142" fill="#9e9e9e"/>
+  <!-- 耳（内・ピンク） -->
+  <polygon points="149,137 161,85 186,131" fill="#f48fb1"/>
+  <polygon points="214,131 239,85 251,137" fill="#f48fb1"/>
+
+  <!-- 目（白目） -->
+  <ellipse cx="174" cy="172" rx="15" ry="16" fill="white"/>
+  <ellipse cx="226" cy="172" rx="15" ry="16" fill="white"/>
+  <!-- 瞳 -->
+  <ellipse cx="174" cy="174" rx="9" ry="12" fill="#2d2d2d"/>
+  <ellipse cx="226" cy="174" rx="9" ry="12" fill="#2d2d2d"/>
+  <!-- ハイライト -->
+  <circle cx="170" cy="169" r="3.5" fill="white"/>
+  <circle cx="222" cy="169" r="3.5" fill="white"/>
+
+  <!-- 鼻（三角） -->
+  <polygon points="200,190 195,198 205,198" fill="#f48fb1"/>
+
+  <!-- 口 -->
+  <path d="M 200,198 Q 189,208 181,204"
+    fill="none" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M 200,198 Q 211,208 219,204"
+    fill="none" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- ひげ（左） -->
+  <line x1="122" y1="187" x2="183" y2="193" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="120" y1="196" x2="183" y2="197" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="122" y1="205" x2="183" y2="201" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <!-- ひげ（右） -->
+  <line x1="217" y1="193" x2="278" y2="187" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="217" y1="197" x2="280" y2="196" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="217" y1="201" x2="278" y2="205" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+
+  <!-- キャプション -->
+  <text x="200" y="458" fill="#aaa" font-size="13" font-family="sans-serif" text-anchor="middle">SVGで描いた猫</text>
+
+</svg>
+
+</body>
+</html>

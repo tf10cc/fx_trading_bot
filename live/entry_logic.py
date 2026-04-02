@@ -7,11 +7,13 @@ FES entry_logic.py  ライブトレード（書き直し版）
   python entry_logic.py --test                  # 1回だけ実行して終了
 """
 
+import csv
 import os
 import sys
 import time
 import importlib.util
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pandas as pd
 import requests
@@ -26,6 +28,25 @@ DEFAULT_INSTRUMENT  = 'USD_JPY'  # 取引銘柄
 DEFAULT_UNITS       = 1          # 取引ユニット数（XAU_USD: 1 = 1オンス）
 SMA_PERIOD          = 75
 OANDA_API_URL       = 'https://api-fxpractice.oanda.com/v3'
+LOG_FILE            = Path(__file__).parent / 'trade_log.csv'
+LOG_HEADERS         = ['datetime_utc', 'action', 'instrument', 'price']
+
+
+# ---- ログ書き出し ----
+
+def log_trade(action, instrument, price):
+    """エントリー・決済をtrade_log.csvに追記する"""
+    file_exists = LOG_FILE.exists()
+    with open(LOG_FILE, 'a', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=LOG_HEADERS)
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow({
+            'datetime_utc': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M'),
+            'action':       action,
+            'instrument':   instrument,
+            'price':        price,
+        })
 
 
 # ---- カセット読み込み ----
@@ -65,11 +86,12 @@ def send_order(instrument, units):
     resp = requests.post(url, headers=_headers(), json=body)
     if resp.status_code == 201:
         fill = resp.json().get('orderFillTransaction', {})
-        print(f'  約定価格: {fill.get("price")}')
-        return True
+        price = fill.get('price')
+        print(f'  約定価格: {price}')
+        return price
     else:
         print(f'  ❌ 注文失敗: {resp.status_code} {resp.text}')
-        return False
+        return None
 
 
 def close_position(instrument, side):
@@ -82,11 +104,13 @@ def close_position(instrument, side):
     body = {'longUnits': 'ALL'} if side == 'long' else {'shortUnits': 'ALL'}
     resp = requests.put(url, headers=_headers(), json=body)
     if resp.status_code == 200:
-        print(f'  ✅ 決済完了')
-        return True
+        key = 'longOrderFillTransaction' if side == 'long' else 'shortOrderFillTransaction'
+        price = resp.json().get(key, {}).get('price')
+        print(f'  ✅ 決済完了: {price}')
+        return price
     else:
         print(f'  ❌ 決済失敗: {resp.status_code} {resp.text}')
-        return False
+        return None
 
 
 # ---- df を作る（OANDAからデータ取得 + 全カラム計算） ----
@@ -146,11 +170,15 @@ def run_once(df, cassette, position, instrument=DEFAULT_INSTRUMENT):
     if position is None:
         if cassette.check_long_entry(df, idx):
             print('✅ BUY シグナル → 注文送信')
-            if send_order(instrument, DEFAULT_UNITS):
+            price = send_order(instrument, DEFAULT_UNITS)
+            if price is not None:
+                log_trade('BUY', instrument, price)
                 return 'long'
         elif cassette.check_short_entry(df, idx):
             print('✅ SELL シグナル → 注文送信')
-            if send_order(instrument, -DEFAULT_UNITS):
+            price = send_order(instrument, -DEFAULT_UNITS)
+            if price is not None:
+                log_trade('SELL', instrument, price)
                 return 'short'
         else:
             print('⏸️  待機（条件不成立）')
@@ -158,11 +186,15 @@ def run_once(df, cassette, position, instrument=DEFAULT_INSTRUMENT):
     else:
         if position == 'long' and cassette.check_long_exit(df, idx):
             print('🔴 ロング決済 → 決済注文送信')
-            if close_position(instrument, 'long'):
+            price = close_position(instrument, 'long')
+            if price is not None:
+                log_trade('EXIT_LONG', instrument, price)
                 return None
         elif position == 'short' and cassette.check_short_exit(df, idx):
             print('🔵 ショート決済 → 決済注文送信')
-            if close_position(instrument, 'short'):
+            price = close_position(instrument, 'short')
+            if price is not None:
+                log_trade('EXIT_SHORT', instrument, price)
                 return None
         else:
             print(f'📊 ポジション保有中（{position}）')
@@ -205,7 +237,7 @@ if __name__ == '__main__':
     load_dotenv()
 
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
-    cassette_path = args[0] if args else 'logics/heikin_ashi_75sma.py'
+    cassette_path = args[0] if args else '../logics/heikin_ashi_75sma.py'
     if not os.path.exists(cassette_path):
         print(f'[ERROR] カセットファイルが見つかりません: {cassette_path}')
         sys.exit(1)

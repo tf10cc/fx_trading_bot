@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ライブトレード構成図</title>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; background: #12121f; color: #eee; margin: 40px; }
+  h1 { font-size: 20px; color: #aaa; margin-bottom: 30px; }
+</style>
+</head>
+<body>
+<h1>ライブトレード構成図　（1時間に1回、毎時0分0秒に実行）</h1>
+
+<svg width="1300" height="780" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1300" height="780" fill="#12121f"/>
+
+  <defs>
+    <marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto"><path d="M0,0 L0,8 L10,4 z" fill="#aaa"/></marker>
+    <marker id="ag" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto"><path d="M0,0 L0,8 L10,4 z" fill="#4caf50"/></marker>
+    <marker id="ab" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto"><path d="M0,0 L0,8 L10,4 z" fill="#4a90d9"/></marker>
+    <marker id="ae" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto"><path d="M0,0 L0,8 L10,4 z" fill="#ef5350"/></marker>
+  </defs>
+
+  <!-- ========== FES（左） ========== -->
+  <rect x="30" y="40" width="680" height="700" rx="14" fill="#1a1a30" stroke="#555" stroke-width="2"/>
+  <text x="370" y="78" text-anchor="middle" fill="#888" font-size="15">FES（自分のプログラム）</text>
+
+  <!-- ① 毎時0分に起動 -->
+  <rect x="80" y="100" width="580" height="80" rx="10" fill="#222" stroke="#666" stroke-width="2"/>
+  <text x="370" y="136" text-anchor="middle" fill="#ccc" font-size="16" font-weight="bold">① 毎時0分0秒に起動</text>
+  <text x="370" y="162" text-anchor="middle" fill="#666" font-size="13">entry_logic.py　main_loop()</text>
+
+  <line x1="370" y1="180" x2="370" y2="210" stroke="#aaa" stroke-width="2.5" marker-end="url(#ar)"/>
+
+  <!-- ② ローソク足を取得 -->
+  <rect x="80" y="210" width="580" height="80" rx="10" fill="#1e3a2f" stroke="#4caf50" stroke-width="2.5"/>
+  <text x="370" y="246" text-anchor="middle" fill="#81c784" font-size="16" font-weight="bold">② OANDAからローソク足を取得</text>
+  <text x="370" y="272" text-anchor="middle" fill="#777" font-size="13">heikin_ashi.py　fetch_candles()</text>
+
+  <line x1="370" y1="290" x2="370" y2="320" stroke="#aaa" stroke-width="2.5" marker-end="url(#ar)"/>
+
+  <!-- ③ 指標を計算 -->
+  <rect x="80" y="320" width="580" height="80" rx="10" fill="#2a2a1e" stroke="#ffb74d" stroke-width="2.5"/>
+  <text x="370" y="356" text-anchor="middle" fill="#ffcc80" font-size="16" font-weight="bold">③ 指標を計算する</text>
+  <text x="370" y="382" text-anchor="middle" fill="#777" font-size="13">entry_logic.py　build_df()　平均足・SMA75</text>
+
+  <line x1="370" y1="400" x2="370" y2="430" stroke="#aaa" stroke-width="2.5" marker-end="url(#ar)"/>
+
+  <!-- ④ カセットで判定 -->
+  <rect x="80" y="430" width="580" height="80" rx="10" fill="#2e1e3a" stroke="#9c7ae0" stroke-width="2.5"/>
+  <text x="370" y="466" text-anchor="middle" fill="#ce93d8" font-size="16" font-weight="bold">④ カセットで条件を判定する</text>
+  <text x="370" y="492" text-anchor="middle" fill="#777" font-size="13">logics/heikin_ashi_75sma.py</text>
+
+  <line x1="370" y1="510" x2="370" y2="540" stroke="#aaa" stroke-width="2.5" marker-end="url(#ar)"/>
+  <text x="490" y="530" fill="#888" font-size="13">条件成立のとき</text>
+
+  <!-- ⑤ 注文・決済を送る -->
+  <rect x="80" y="540" width="580" height="80" rx="10" fill="#2a1e1e" stroke="#ef5350" stroke-width="2.5"/>
+  <text x="370" y="576" text-anchor="middle" fill="#ef9a9a" font-size="16" font-weight="bold">⑤ 注文・決済をOANDAに送る</text>
+  <text x="370" y="602" text-anchor="middle" fill="#777" font-size="13">entry_logic.py　send_order() / close_position()</text>
+
+  <line x1="370" y1="620" x2="370" y2="650" stroke="#4a90d9" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#ab)"/>
+
+  <!-- monitor.py -->
+  <rect x="80" y="650" width="580" height="70" rx="10" fill="#1e2a3a" stroke="#4a90d9" stroke-width="2" stroke-dasharray="8,4"/>
+  <text x="370" y="681" text-anchor="middle" fill="#90caf9" font-size="16" font-weight="bold">live/monitor.py　現在の状態を画面表示</text>
+  <text x="370" y="705" text-anchor="middle" fill="#555" font-size="13">（作成予定）注文はしない・見るだけ</text>
+
+  <!-- ========== OANDA（右・1つ） ========== -->
+  <rect x="900" y="200" width="360" height="420" rx="14" fill="#1a2a3a" stroke="#4a90d9" stroke-width="2.5"/>
+  <text x="1080" y="255" text-anchor="middle" fill="#90caf9" font-size="22" font-weight="bold">OANDA</text>
+  <text x="1080" y="285" text-anchor="middle" fill="#7ab3e0" font-size="15">デモ口座 / REST API</text>
+
+  <!-- OANDAの内容 -->
+  <line x1="930" y1="370" x2="1230" y2="370" stroke="#333" stroke-width="1"/>
+  <text x="1080" y="345" text-anchor="middle" fill="#4caf50" font-size="13">ローソク足データ（200本）</text>
+  <text x="1080" y="400" text-anchor="middle" fill="#555" font-size="12">1時間ごとに1本ずつ増える</text>
+
+  <line x1="930" y1="470" x2="1230" y2="470" stroke="#333" stroke-width="1"/>
+  <text x="1080" y="510" text-anchor="middle" fill="#ef5350" font-size="13">注文・決済受付</text>
+  <text x="1080" y="540" text-anchor="middle" fill="#4a90d9" font-size="13">約定結果返却</text>
+  <text x="1080" y="570" text-anchor="middle" fill="#555" font-size="12">条件成立のときだけ</text>
+
+  <!-- ② ↔ OANDA（水平・y=250） -->
+  <line x1="662" y1="245" x2="896" y2="320" stroke="#4caf50" stroke-width="2.5" marker-end="url(#ag)"/>
+  <text x="770" y="268" text-anchor="middle" fill="#4caf50" font-size="13">リクエスト →</text>
+  <line x1="896" y1="360" x2="662" y2="275" stroke="#4a90d9" stroke-width="2.5" marker-end="url(#ab)"/>
+  <text x="770" y="340" text-anchor="middle" fill="#4a90d9" font-size="13">← データ返却</text>
+
+  <!-- ⑤ ↔ OANDA（水平・y=580） -->
+  <line x1="662" y1="573" x2="896" y2="505" stroke="#ef5350" stroke-width="2.5" marker-end="url(#ae)"/>
+  <text x="770" y="525" text-anchor="middle" fill="#ef5350" font-size="13">注文・決済 →</text>
+  <line x1="896" y1="540" x2="662" y2="597" stroke="#4a90d9" stroke-width="2.5" marker-end="url(#ab)"/>
+  <text x="770" y="580" text-anchor="middle" fill="#4a90d9" font-size="13">← 約定結果返却</text>
+
+</svg>
+</body>
+</html>

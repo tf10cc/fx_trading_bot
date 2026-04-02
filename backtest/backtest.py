@@ -681,7 +681,7 @@ st.caption("Powered by TradingView Lightweight Charts")
 st.sidebar.header("設定")
 
 # CSVファイル選択
-base_dir = Path(__file__).resolve().parent
+base_dir = Path(__file__).resolve().parent.parent
 data_dir = base_dir / "data"
 if data_dir.exists():
     csv_files = list(data_dir.glob("*.csv"))

@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 520" width="500" height="520">
+
+  <!-- Background -->
+  <rect width="500" height="520" fill="#f5f2eb"/>
+
+  <!-- ===== SMOKE ===== -->
+  <!-- 半円を交互に逆さにして連結：sweep=1→右膨らみ、sweep=0→左膨らみ -->
+  <!-- メインの煙 (太め) -->
+  <path d="
+    M 118,278
+    A 15,15 0 0 1 118,248
+    A 15,15 0 0 0 118,218
+    A 15,15 0 0 1 118,188
+    A 15,15 0 0 0 118,158
+    A 15,15 0 0 1 118,128
+    A 15,15 0 0 0 118,98
+    A 15,15 0 0 1 118,68
+    A 15,15 0 0 0 118,38
+  "
+    fill="none" stroke="#888888" stroke-width="5"
+    stroke-linecap="round" opacity="0.55"/>
+
+  <!-- サブの煙 (細め・少しずれて奥行き感) -->
+  <path d="
+    M 130,274
+    A 11,11 0 0 0 130,252
+    A 11,11 0 0 1 130,230
+    A 11,11 0 0 0 130,208
+    A 11,11 0 0 1 130,186
+    A 11,11 0 0 0 130,164
+    A 11,11 0 0 1 130,142
+  "
+    fill="none" stroke="#aaaaaa" stroke-width="2.5"
+    stroke-linecap="round" opacity="0.35"/>
+
+  <!-- ===== タバコ本体 ===== -->
+
+  <!-- 紙巻き部分（長い直方体） -->
+  <rect x="108" y="288" width="238" height="28"
+        rx="4" ry="4"
+        fill="#f5f0e5" stroke="#c0c0b8" stroke-width="1.5"/>
+
+  <!-- 紙の折り目（等間隔の縦線） -->
+  <line x1="190" y1="289" x2="190" y2="315" stroke="#d8d4c8" stroke-width="1"/>
+  <line x1="220" y1="289" x2="220" y2="315" stroke="#d8d4c8" stroke-width="1"/>
+  <line x1="250" y1="289" x2="250" y2="315" stroke="#d8d4c8" stroke-width="1"/>
+  <line x1="280" y1="289" x2="280" y2="315" stroke="#d8d4c8" stroke-width="1"/>
+  <line x1="310" y1="289" x2="310" y2="315" stroke="#d8d4c8" stroke-width="1"/>
+
+  <!-- フィルター（オレンジ茶の直方体） -->
+  <rect x="346" y="284" width="56" height="36"
+        rx="15" ry="15"
+        fill="#c07038" stroke="#985820" stroke-width="1.5"/>
+
+  <!-- フィルターの縦縞テクスチャ -->
+  <line x1="360" y1="286" x2="360" y2="318" stroke="#a86030" stroke-width="1.2" opacity="0.6"/>
+  <line x1="372" y1="286" x2="372" y2="318" stroke="#a86030" stroke-width="1.2" opacity="0.6"/>
+  <line x1="384" y1="286" x2="384" y2="318" stroke="#a86030" stroke-width="1.2" opacity="0.6"/>
+
+  <!-- 金帯（フィルターと紙の境界） -->
+  <rect x="342" y="284" width="8" height="36"
+        rx="2" fill="#d4aa30" stroke="#b89018" stroke-width="1"/>
+
+  <!-- 左端の断面（円で表現） -->
+  <circle cx="108" cy="302" r="14"
+          fill="#f5f0e5" stroke="#c0c0b8" stroke-width="1.5"/>
+
+  <!-- 灰（楕円） -->
+  <ellipse cx="102" cy="302" rx="9" ry="6" fill="#d2d0c8"/>
+  <ellipse cx="99"  cy="302" rx="6" ry="4" fill="#c4c2ba"/>
+
+  <!-- 火種（同心円） -->
+  <circle cx="94" cy="302" r="8"   fill="#ff4400" opacity="0.9"/>
+  <circle cx="94" cy="302" r="5"   fill="#ff8800"/>
+  <circle cx="94" cy="302" r="2.5" fill="#ffee00"/>
+
+  <!-- ===== テキスト ===== -->
+  <text x="250" y="415"
+        font-family="serif"
+        font-size="46"
+        font-weight="bold"
+        text-anchor="middle"
+        fill="#cc2200">吸いすぎに</text>
+  <text x="250" y="475"
+        font-family="serif"
+        font-size="46"
+        font-weight="bold"
+        text-anchor="middle"
+        fill="#cc2200">気をつけよう！</text>
+
+</svg>

@@ -1,0 +1,258 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 530" width="760" height="530">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c5dae8"/>
+      <stop offset="100%" stop-color="#d8ecf5"/>
+    </linearGradient>
+    <linearGradient id="waveMain" x1="0" y1="0" x2="0.15" y2="1">
+      <stop offset="0%" stop-color="#0d2445"/>
+      <stop offset="40%" stop-color="#163a6a"/>
+      <stop offset="100%" stop-color="#2060a0"/>
+    </linearGradient>
+    <linearGradient id="waveSide" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0a1e3e"/>
+      <stop offset="100%" stop-color="#163060"/>
+    </linearGradient>
+    <linearGradient id="seaDeep" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#163060"/>
+      <stop offset="100%" stop-color="#07121e"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Sky -->
+  <rect width="760" height="530" fill="url(#sky)"/>
+
+  <!-- Background sea stripes (ukiyo-e style horizontal lines) -->
+  <path d="M 55,290 Q 200,283 345,290 Q 490,297 635,290 Q 695,287 755,290 L 755,297 Q 695,294 635,297 Q 490,304 345,297 Q 200,290 55,297 Z" fill="#3070a8"/>
+  <path d="M 35,304 Q 195,298 355,304 Q 515,310 675,304 Q 718,301 755,304 L 755,311 Q 718,308 675,311 Q 515,317 355,311 Q 195,305 35,311 Z" fill="#2864a0"/>
+  <path d="M 15,318 Q 190,312 365,318 Q 540,324 715,318 L 755,318 L 755,325 L 715,325 Q 540,331 365,325 Q 190,319 15,325 Z" fill="#205898"/>
+  <path d="M 0,333 Q 185,327 370,333 Q 555,339 740,333 L 755,333 L 755,340 L 740,340 Q 555,346 370,340 Q 185,334 0,340 Z" fill="#1a4c8a"/>
+  <path d="M 0,348 Q 160,342 320,348 Q 480,354 640,348 Q 700,345 755,348 L 755,356 Q 700,352 640,355 Q 480,361 320,355 Q 160,349 0,356 Z" fill="#164080"/>
+  <path d="M 0,362 Q 145,357 290,362 Q 435,367 580,362 Q 660,358 755,362 L 755,370 Q 660,365 580,369 Q 435,374 290,369 Q 145,364 0,370 Z" fill="#123572"/>
+
+  <!-- Mt. Fuji -->
+  <path d="M 348,285 L 422,192 L 496,285 Q 458,295 422,292 Q 386,295 348,285 Z" fill="#8ba5b8"/>
+  <!-- Fuji snow cap -->
+  <path d="M 386,250 Q 400,222 422,192 Q 444,222 458,250 Q 440,261 422,258 Q 404,261 386,250 Z" fill="#f0eeea"/>
+  <!-- Fuji base haze -->
+  <path d="M 336,292 Q 422,282 508,292 L 516,305 Q 422,297 328,305 Z" fill="#6a8898" opacity="0.5"/>
+
+  <!-- ===== BOATS ===== -->
+  <!-- Boat 1 - center (largest) -->
+  <path d="M 198,342 Q 270,326 345,332 Q 378,336 386,346 Q 358,360 320,364 Q 282,367 250,358 Q 222,351 198,346 Z" fill="#081523"/>
+  <!-- Rowers: heads -->
+  <circle cx="224" cy="340" r="5.5" fill="#bf9855"/>
+  <circle cx="250" cy="336" r="5.5" fill="#bf9855"/>
+  <circle cx="276" cy="333" r="5.5" fill="#bf9855"/>
+  <circle cx="302" cy="331" r="5.5" fill="#bf9855"/>
+  <circle cx="328" cy="330" r="5.5" fill="#bf9855"/>
+  <circle cx="354" cy="332" r="5.5" fill="#bf9855"/>
+  <!-- Rowers: oar silhouettes -->
+  <path d="M 222,340 L 212,352 M 248,336 L 238,348 M 274,333 L 264,345 M 300,331 L 290,343 M 326,330 L 316,342 M 352,332 L 342,344" stroke="#081523" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Boat 2 - left, behind -->
+  <path d="M 112,367 Q 178,352 246,358 Q 268,362 276,372 Q 250,383 218,385 Q 185,387 158,379 Q 134,373 112,371 Z" fill="#081523"/>
+  <circle cx="136" cy="369" r="4.5" fill="#bf9855"/>
+  <circle cx="159" cy="366" r="4.5" fill="#bf9855"/>
+  <circle cx="182" cy="363" r="4.5" fill="#bf9855"/>
+  <circle cx="205" cy="362" r="4.5" fill="#bf9855"/>
+  <circle cx="228" cy="363" r="4.5" fill="#bf9855"/>
+
+  <!-- Boat 3 - right, near wave -->
+  <path d="M 372,320 Q 440,305 512,311 Q 538,314 547,325 Q 521,337 488,341 Q 455,344 426,335 Q 398,328 372,324 Z" fill="#081523"/>
+  <circle cx="396" cy="323" r="4.5" fill="#bf9855"/>
+  <circle cx="420" cy="319" r="4.5" fill="#bf9855"/>
+  <circle cx="444" cy="316" r="4.5" fill="#bf9855"/>
+  <circle cx="468" cy="315" r="4.5" fill="#bf9855"/>
+  <circle cx="492" cy="317" r="4.5" fill="#bf9855"/>
+
+  <!-- ===== MAIN WAVE BODY ===== -->
+  <!-- Left arm: rises from bottom-left, crests at upper-right -->
+  <path d="
+    M 0,530
+    L 0,388
+    C 18,358 38,322 50,290
+    C 62,258 55,228 80,200
+    C 105,172 148,155 198,145
+    C 248,135 300,128 350,120
+    C 400,112 448,102 496,92
+    C 540,83 582,74 620,70
+    C 645,68 665,70 680,82
+    C 693,94 694,115 682,138
+    C 668,162 642,180 610,196
+    C 575,212 537,224 500,233
+    C 462,242 426,250 394,263
+    C 360,276 334,296 324,320
+    C 315,343 326,368 350,386
+    C 374,403 404,414 428,432
+    C 450,448 458,466 450,484
+    C 442,501 420,510 392,510
+    C 360,510 322,498 284,488
+    C 246,478 206,470 168,473
+    C 136,475 108,486 84,502
+    C 64,516 50,528 38,530
+    Z
+  " fill="url(#waveMain)"/>
+
+  <!-- Wave hollow (inner face, concave) -->
+  <path d="
+    M 325,132
+    C 370,124 415,114 462,104
+    C 505,95 546,86 582,78
+    C 612,72 638,70 658,78
+    C 670,84 676,96 672,112
+    C 666,132 648,150 622,166
+    C 594,182 560,195 524,205
+    C 488,215 452,224 420,236
+    C 387,249 362,266 350,290
+    C 340,312 348,336 368,354
+    C 332,352 296,360 268,375
+    C 300,360 334,350 366,350
+    C 344,330 336,306 346,282
+    C 356,258 380,240 414,227
+    C 446,215 482,206 518,196
+    C 553,186 586,173 613,157
+    C 637,142 654,122 654,104
+    C 653,92 644,84 628,80
+    C 608,76 582,80 550,88
+    C 512,98 468,108 424,118
+    C 378,128 332,136 325,132
+    Z
+  " fill="#1a4278" opacity="0.65"/>
+
+  <!-- Right wave back (coming from upper-right) -->
+  <path d="
+    M 760,0
+    L 558,0
+    C 572,22 590,44 610,60
+    C 628,74 646,78 662,76
+    C 678,74 692,82 700,98
+    C 707,115 703,142 688,168
+    C 672,195 647,216 616,235
+    C 582,254 544,268 508,281
+    C 471,294 436,308 410,330
+    C 384,352 370,380 377,410
+    C 384,438 402,460 426,478
+    C 450,495 474,506 488,524
+    L 760,524
+    Z
+  " fill="url(#waveSide)"/>
+
+  <!-- Foreground sea -->
+  <path d="
+    M 0,524
+    C 30,514 60,508 92,510
+    C 120,512 146,522 175,523
+    C 204,524 232,516 260,510
+    C 290,504 318,500 346,504
+    C 374,508 398,518 426,520
+    C 454,522 480,516 508,510
+    C 536,504 564,500 592,503
+    C 620,506 646,516 675,519
+    C 705,522 735,518 760,512
+    L 760,530
+    L 0,530
+    Z
+  " fill="url(#seaDeep)"/>
+
+  <!-- Foreground wave ripple lines -->
+  <path d="M 0,418 C 60,412 120,415 180,418 C 240,421 300,424 360,418 C 420,412 480,410 540,415 C 600,420 660,424 720,420 L 760,418" fill="none" stroke="#2060a0" stroke-width="2" opacity="0.6"/>
+  <path d="M 0,434 C 80,428 160,432 240,435 C 320,438 400,436 480,432 C 560,428 640,432 720,438 L 760,436" fill="none" stroke="#1a4e88" stroke-width="1.5" opacity="0.5"/>
+  <path d="M 0,450 C 100,445 200,449 300,452 C 400,455 500,450 600,447 C 660,445 710,449 760,452" fill="none" stroke="#163880" stroke-width="1.5" opacity="0.5"/>
+  <path d="M 0,466 C 90,462 180,465 270,468 C 360,471 450,468 540,464 C 620,461 690,465 760,468" fill="none" stroke="#122e70" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- ===== WAVE FOAM - White "claw" shapes at crest ===== -->
+  <!-- These iconic finger shapes droop downward from the crest line -->
+
+  <!-- Foam cluster 1 (leftmost) -->
+  <path d="M 85,140 C 82,127 79,114 83,106 C 87,98 96,98 102,107 C 107,116 105,130 101,142 Z" fill="white"/>
+  <path d="M 105,133 C 102,119 100,105 105,97 C 110,89 120,89 124,99 C 128,109 126,124 122,136 Z" fill="white"/>
+  <path d="M 126,125 C 124,111 123,97 129,89 C 135,81 145,82 148,92 C 151,103 149,118 145,130 Z" fill="white"/>
+
+  <!-- Foam cluster 2 -->
+  <path d="M 148,118 C 147,104 147,90 154,82 C 161,74 171,75 174,86 C 177,97 175,113 171,125 Z" fill="white"/>
+  <path d="M 170,112 C 170,98 170,84 178,76 C 186,68 196,69 198,81 C 200,92 198,108 194,120 Z" fill="white"/>
+  <path d="M 192,107 C 193,93 194,79 202,71 C 210,63 221,65 222,77 C 223,89 220,105 216,117 Z" fill="white"/>
+
+  <!-- Foam cluster 3 -->
+  <path d="M 214,102 C 216,88 218,74 227,66 C 236,58 247,61 247,73 C 247,85 244,101 240,113 Z" fill="white"/>
+  <path d="M 238,98 C 241,84 244,70 253,62 C 262,54 273,58 272,70 C 271,82 268,98 264,110 Z" fill="white"/>
+
+  <!-- Foam cluster 4 -->
+  <path d="M 261,94 C 265,80 269,66 279,58 C 289,50 300,54 298,67 C 296,79 293,95 289,107 Z" fill="white"/>
+  <path d="M 286,90 C 291,76 296,62 306,54 C 316,46 327,51 324,64 C 321,76 318,92 314,104 Z" fill="white"/>
+  <path d="M 311,87 C 317,73 323,59 334,51 C 345,43 355,49 352,62 C 349,74 346,90 342,102 Z" fill="white"/>
+
+  <!-- Foam cluster 5 -->
+  <path d="M 337,84 C 344,70 351,56 363,49 C 374,42 385,49 381,62 C 377,74 374,90 370,102 Z" fill="white"/>
+  <path d="M 363,81 C 371,67 379,53 391,46 C 403,39 413,47 408,60 C 404,72 401,88 397,100 Z" fill="white"/>
+
+  <!-- Foam cluster 6 -->
+  <path d="M 390,79 C 399,65 408,52 421,45 C 433,38 443,47 438,60 C 433,72 430,88 426,100 Z" fill="white"/>
+  <path d="M 418,77 C 428,63 438,50 451,44 C 464,37 473,47 467,60 C 461,73 458,89 454,101 Z" fill="white"/>
+  <path d="M 447,75 C 458,62 469,49 482,43 C 495,37 504,48 497,61 C 490,74 487,90 483,102 Z" fill="white"/>
+
+  <!-- Foam cluster 7 -->
+  <path d="M 475,74 C 487,61 499,49 512,43 C 525,37 534,49 526,62 C 519,75 516,91 512,103 Z" fill="white"/>
+  <path d="M 503,73 C 516,60 529,49 543,43 C 556,37 564,49 556,63 C 548,76 545,92 541,104 Z" fill="white"/>
+
+  <!-- Foam cluster 8 (approaching crest) -->
+  <path d="M 532,73 C 546,61 560,50 574,45 C 587,40 594,53 585,67 C 577,80 574,95 570,107 Z" fill="white"/>
+  <path d="M 560,75 C 575,64 590,53 604,49 C 618,44 624,58 614,72 C 604,85 601,100 597,111 Z" fill="white"/>
+  <path d="M 588,79 C 604,68 620,59 634,55 C 647,51 652,66 641,80 C 630,93 627,107 623,118 Z" fill="white"/>
+
+  <!-- Foam cluster 9 (at crest, curling inward) -->
+  <path d="M 613,86 C 630,76 647,68 660,65 C 671,63 676,76 667,91 C 658,105 655,118 651,127 Z" fill="white"/>
+  <path d="M 635,96 C 652,87 667,80 678,78 C 688,76 691,90 681,105 C 671,119 668,131 664,139 Z" fill="white"/>
+  <path d="M 652,110 C 667,102 679,96 687,95 C 694,94 695,108 685,123 C 675,137 673,148 669,155 Z" fill="white"/>
+
+  <!-- Fine spray dots along crest -->
+  <circle cx="78"  cy="100" r="3"   fill="white" opacity="0.85"/>
+  <circle cx="68"  cy="91"  r="2"   fill="white" opacity="0.60"/>
+  <circle cx="92"  cy="88"  r="2.5" fill="white" opacity="0.70"/>
+  <circle cx="136" cy="78"  r="2"   fill="white" opacity="0.65"/>
+  <circle cx="195" cy="66"  r="2.5" fill="white" opacity="0.70"/>
+  <circle cx="265" cy="55"  r="2"   fill="white" opacity="0.65"/>
+  <circle cx="348" cy="48"  r="2.5" fill="white" opacity="0.70"/>
+  <circle cx="430" cy="42"  r="2"   fill="white" opacity="0.65"/>
+  <circle cx="512" cy="40"  r="2.5" fill="white" opacity="0.70"/>
+  <circle cx="594" cy="44"  r="2"   fill="white" opacity="0.65"/>
+  <circle cx="638" cy="55"  r="3"   fill="white" opacity="0.80"/>
+  <circle cx="655" cy="66"  r="2.5" fill="white" opacity="0.70"/>
+  <circle cx="665" cy="56"  r="2"   fill="white" opacity="0.50"/>
+  <circle cx="672" cy="47"  r="2"   fill="white" opacity="0.45"/>
+
+  <!-- White foam at wave base -->
+  <path d="M 38,390 Q 68,382 100,387 Q 122,391 118,401 Q 90,408 60,404 Q 40,400 38,394 Z" fill="white" opacity="0.65"/>
+  <path d="M 285,368 Q 312,360 340,365 Q 354,369 350,379 Q 326,385 302,379 Q 287,375 285,372 Z" fill="white" opacity="0.60"/>
+  <path d="M 435,388 Q 462,380 486,386 Q 499,390 495,400 Q 471,406 450,400 Q 436,396 435,392 Z" fill="white" opacity="0.60"/>
+
+  <!-- Wave crest highlight outline -->
+  <path d="
+    M 70,150
+    C 118,134 168,120 220,109
+    C 268,99 318,91 368,83
+    C 415,76 460,70 503,65
+    C 542,61 577,59 606,63
+    C 634,67 652,78 658,93
+    C 662,107 656,126 638,146
+    C 619,167 593,183 562,197
+    C 530,211 495,221 460,231
+    C 425,241 392,253 364,270
+    C 336,288 316,312 312,340
+    C 308,364 320,388 344,406
+  " fill="none" stroke="white" stroke-width="2.5" stroke-opacity="0.40" stroke-linecap="round"/>
+
+  <!-- Wave body texture lines (left arm) -->
+  <path d="M 18,280 C 36,256 50,230 56,204 C 62,178 58,156 76,138" fill="none" stroke="#4080b8" stroke-width="2"   stroke-opacity="0.45"/>
+  <path d="M 40,306 C 55,280 66,252 70,226 C 74,200 70,178 88,160" fill="none" stroke="#4080b8" stroke-width="1.5" stroke-opacity="0.35"/>
+  <path d="M 68,328 C 80,300 88,272 91,245 C 94,218 92,196 108,178" fill="none" stroke="#3878b0" stroke-width="1.5" stroke-opacity="0.30"/>
+
+  <!-- Wave body texture lines (right arm) -->
+  <path d="M 670,148 C 686,174 697,202 700,232 C 702,262 697,292 684,324" fill="none" stroke="#4080b8" stroke-width="1.5" stroke-opacity="0.40"/>
+  <path d="M 688,162 C 705,190 715,220 717,252 C 718,283 712,314 698,344" fill="none" stroke="#3878b0" stroke-width="1.5" stroke-opacity="0.30"/>
+
+  <!-- Border (ukiyo-e style double frame) -->
+  <rect x="5"  y="5"  width="750" height="520" fill="none" stroke="#1a3461" stroke-width="4"/>
+  <rect x="11" y="11" width="738" height="508" fill="none" stroke="#2048a0" stroke-width="1"/>
+</svg>

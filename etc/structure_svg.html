@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>FES システム全体図</title>
+</head>
+<body style="background:#111; display:flex; justify-content:center; padding:30px; margin:0">
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 580" width="1300" style="font-family:sans-serif">
+  <rect width="900" height="580" fill="#1a1a2e"/>
+
+  <!-- タイトル -->
+  <text x="450" y="30" fill="#ccc" font-size="17" text-anchor="middle" font-weight="bold">FES システム全体図</text>
+
+  <!-- ======== 上段：共通ロジック ======== -->
+
+  <rect x="100" y="48" width="700" height="110" rx="8" fill="none" stroke="#ef5350" stroke-width="2.5" stroke-dasharray="8,4"/>
+  <text x="450" y="68" fill="#ef5350" font-size="13" text-anchor="middle" font-weight="bold">📁 logics/　共通ロジック（カセット方式）</text>
+  <text x="450" y="83" fill="#888" font-size="10" text-anchor="middle">← バックテストもライブトレードも同じロジックファイルを使う →</text>
+  <rect x="113" y="90" width="674" height="60" rx="5" fill="#3a1a1a"/>
+  <rect x="113" y="90" width="4"   height="60" rx="2" fill="#ef5350"/>
+  <text x="128" y="108" fill="#eee" font-size="12">heikin_ashi_75sma.py　（R氏 平均足75SMA手法）</text>
+  <text x="140" y="124" fill="#aaa" font-size="11">・check_long_entry(df, idx)　　・check_short_entry(df, idx)　　・check_long_exit(df, idx)　　・check_short_exit(df, idx)</text>
+  <text x="700" y="143" fill="#777" font-size="10">（ファイルを追加するだけで選択肢に出る）</text>
+
+  <!-- セクションヘッダー -->
+  <text x="215" y="178" fill="#aaa" font-size="12" text-anchor="middle">▼ バックテスト系</text>
+  <text x="670" y="178" fill="#aaa" font-size="12" text-anchor="middle">▼ ライブトレード系</text>
+  <rect x="798" y="166" width="55" height="16" rx="3" fill="#5d4037"/>
+  <text x="825" y="178" fill="#ffcc80" font-size="10" text-anchor="middle">開発中</text>
+
+  <!-- logics/ → バックテスト（赤矢印、x=300 で下へ） -->
+  <line x1="300" y1="158" x2="300" y2="268" stroke="#ef5350" stroke-width="2"/>
+  <polygon points="300,272 295,262 305,262" fill="#ef5350"/>
+
+  <!-- logics/ → ライブ（赤矢印、x=600 で下へ） -->
+  <line x1="600" y1="158" x2="600" y2="188" stroke="#ef5350" stroke-width="2"/>
+  <polygon points="600,192 595,182 605,182" fill="#ef5350"/>
+
+  <!-- ======== 左：バックテスト系 ======== -->
+
+  <!-- data/ CSV（上に配置） -->
+  <rect x="20" y="186" width="180" height="48" rx="6" fill="none" stroke="#7e57c2" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="110" y="207" fill="#ce93d8" font-size="12" text-anchor="middle">📁 data/</text>
+  <text x="110" y="224" fill="#aaa" font-size="10" text-anchor="middle">バックテスト用 CSV</text>
+
+  <!-- Arrow: data/ → streamlit（下向き） -->
+  <line x1="110" y1="234" x2="110" y2="253" stroke="#7e57c2" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <polygon points="110,257 105,247 115,247" fill="#7e57c2"/>
+  <text x="120" y="249" fill="#7e57c2" font-size="10">読み込み</text>
+
+  <!-- streamlit_app_lightweight.py 外枠 -->
+  <rect x="20" y="260" width="430" height="255" rx="8" fill="none" stroke="#555" stroke-width="2"/>
+  <text x="35" y="280" fill="#90caf9" font-size="12" font-weight="bold">📄 streamlit_app_lightweight.py</text>
+
+  <!-- 定数 -->
+  <rect x="30" y="287" width="410" height="28" rx="4" fill="#2a1a3a"/>
+  <rect x="30" y="287" width="4"   height="28" rx="2" fill="#9c27b0"/>
+  <text x="45" y="305" fill="#eee" font-size="11">定数定義（COLOR_* / SMA_PERIOD など）</text>
+
+  <!-- BacktestEngine -->
+  <rect x="30" y="322" width="410" height="85" rx="4" fill="#1a2a3a"/>
+  <rect x="30" y="322" width="4"   height="85" rx="2" fill="#2196f3"/>
+  <text x="45" y="340" fill="#eee" font-size="12" font-weight="bold">BacktestEngine クラス</text>
+  <text x="55" y="356" fill="#aaa" font-size="11">・CSV → DataFrame 読み込み・SMA・平均足カラム計算</text>
+  <text x="55" y="371" fill="#90caf9" font-size="11">・logics/ の関数を呼び出す</text>
+  <text x="55" y="386" fill="#aaa" font-size="11">・売買執行・損益・成績計算</text>
+  <text x="55" y="401" fill="#aaa" font-size="11">　</text>
+
+  <!-- chart -->
+  <rect x="30" y="414" width="410" height="28" rx="4" fill="#2a2a1a"/>
+  <rect x="30" y="414" width="4"   height="28" rx="2" fill="#ff9800"/>
+  <text x="45" y="432" fill="#eee" font-size="11">create_lightweight_chart()　チャートHTML生成</text>
+
+  <!-- Streamlit UI -->
+  <rect x="30" y="449" width="410" height="60" rx="4" fill="#1b3a1b"/>
+  <rect x="30" y="449" width="4"   height="60" rx="2" fill="#4caf50"/>
+  <text x="45" y="467" fill="#eee" font-size="12" font-weight="bold">Streamlit UI</text>
+  <text x="55" y="483" fill="#a5d6a7" font-size="11">・ロジック選択ドロップダウン</text>
+  <text x="55" y="498" fill="#aaa" font-size="11">・CSVファイル選択・バックテスト実行・結果表示・日時ジャンプ</text>
+
+  <!-- ======== 右：ライブトレード系 ======== -->
+
+  <!-- entry_logic.py 外枠 -->
+  <rect x="460" y="196" width="420" height="240" rx="8" fill="none" stroke="#555" stroke-width="2"/>
+  <text x="475" y="216" fill="#90caf9" font-size="12" font-weight="bold">📄 entry_logic.py　（書き直し予定）</text>
+
+  <!-- ① タイマー -->
+  <rect x="470" y="223" width="400" height="28" rx="4" fill="#1b3a1b"/>
+  <rect x="470" y="223" width="4"   height="28" rx="2" fill="#4caf50"/>
+  <text x="485" y="241" fill="#a5d6a7" font-size="11">⏰ 毎時0分　タイマー発火</text>
+
+  <!-- ② データ取得・加工 -->
+  <rect x="470" y="258" width="400" height="45" rx="4" fill="#1a2a3a"/>
+  <rect x="470" y="258" width="4"   height="45" rx="2" fill="#2196f3"/>
+  <text x="485" y="276" fill="#eee" font-size="11">OANDA からデータ取得（200本）</text>
+  <text x="495" y="292" fill="#aaa" font-size="11">平均足・SMA 計算（heikin_ashi.py 使用）</text>
+
+  <!-- ③ logics/ 呼び出し -->
+  <rect x="470" y="310" width="400" height="45" rx="4" fill="#1a2a3a"/>
+  <rect x="470" y="310" width="4"   height="45" rx="2" fill="#2196f3"/>
+  <text x="485" y="328" fill="#90caf9" font-size="11">logics/ の関数を呼び出す（最新足で判定）</text>
+  <text x="495" y="344" fill="#aaa" font-size="11">・BUY / SELL / EXIT を判定 → 注文処理へ</text>
+
+  <!-- ④ 注文管理（開発予定） -->
+  <rect x="470" y="362" width="400" height="37" rx="4" fill="#1a1a1a"/>
+  <rect x="470" y="362" width="4"   height="37" rx="2" fill="#444"/>
+  <text x="485" y="379" fill="#666" font-size="11">注文発注 / ポジション管理 / 決済</text>
+  <text x="495" y="394" fill="#555" font-size="10">← 開発予定：OANDA API 経由でオーダー送信</text>
+
+  <!-- 双方向矢印（entry_logic.py ↔ OANDA） -->
+  <line x1="670" y1="436" x2="670" y2="505" stroke="#777" stroke-width="2"/>
+  <polygon points="670,508 665,498 675,498" fill="#ffb74d"/>
+  <polygon points="670,436 665,446 675,446" fill="#90caf9"/>
+  <text x="480" y="456" fill="#90caf9" font-size="10">↓ 要求：取得 / 注文 / 決済</text>
+  <text x="480" y="472" fill="#ffb74d" font-size="10">↑ レスポンス：ローソク足 / 約定結果</text>
+
+  <!-- OANDA API -->
+  <rect x="460" y="510" width="420" height="55" rx="8" fill="none" stroke="#ff9800" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="670" y="535" fill="#ffb74d" font-size="13" text-anchor="middle">☁ OANDA デモ API</text>
+  <text x="670" y="554" fill="#aaa" font-size="11" text-anchor="middle">api-fxpractice.oanda.com　リアルタイム足データ</text>
+
+</svg>
+
+</body>
+</html>
