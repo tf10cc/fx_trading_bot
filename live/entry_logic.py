@@ -150,7 +150,20 @@ def build_df(instrument, cassette):
     # SMA計算
     df['sma'] = df['close'].rolling(window=SMA_PERIOD).mean()
 
-    return df.reset_index(drop=True)
+    df = df.reset_index(drop=True)
+
+    # candle_log.csv に保存（初回は全件、以降は新しい足だけ追記）
+    candle_log = Path(__file__).parent / 'candle_log.csv'
+    if candle_log.exists():
+        existing = pd.read_csv(candle_log)
+        last_time = existing['time'].iloc[-1]
+        new_rows = df[df['time'] > last_time]
+        if not new_rows.empty:
+            new_rows.to_csv(candle_log, mode='a', header=False, index=False)
+    else:
+        df.to_csv(candle_log, index=False)
+
+    return df
 
 
 # ---- 1回の判定サイクル ----
