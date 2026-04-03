@@ -6,51 +6,260 @@ FES ライブモニター
 """
 
 import sys
+import calendar
+import json
 from pathlib import Path
 from datetime import datetime, timezone
 
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).parent))
-from entry_logic import build_df, load_cassette, DEFAULT_INSTRUMENT
+CANDLE_LOG = Path(__file__).parent / 'candle_log.csv'
+TRADE_LOG  = Path(__file__).parent / 'trade_log.csv'
 
-CASSETTE_PATH = Path(__file__).parent.parent / 'logics' / 'heikin_ashi_75sma.py'
-LOG_FILE      = Path(__file__).parent / 'trade_log.csv'
+COLOR_PROFIT       = '#4CAF50'
+COLOR_LOSS         = '#f23645'
+COLOR_LONG         = '#26a69a'
+COLOR_SHORT        = '#ef5350'
+COLOR_ENTRY_MARKER = '#2196F3'
+COLOR_CLICK_LINE   = '#ffff00'
+SMA_PERIOD         = 75
 
-st.set_page_config(page_title='FES モニター', layout='wide')
+
+def load_candles():
+    if not CANDLE_LOG.exists():
+        return None
+    df = pd.read_csv(CANDLE_LOG)
+    df['time'] = pd.to_datetime(df['time'], utc=True)
+    return df
+
+
+def load_trades():
+    """trade_log.csv からエントリー・決済をペアにして返す"""
+    if not TRADE_LOG.exists():
+        return []
+    log = pd.read_csv(TRADE_LOG)
+    trades = []
+    pending = None  # 未決済のエントリー
+
+    for _, row in log.iterrows():
+        action = row['action']
+        if action in ('BUY', 'SELL'):
+            pending = row
+        elif action in ('EXIT_LONG', 'EXIT_SHORT') and pending is not None:
+            direction = 'long' if action == 'EXIT_LONG' else 'short'
+            entry_price = float(pending['price'])
+            exit_price  = float(row['price'])
+            pips = (exit_price - entry_price) * 100 if direction == 'long' \
+                   else (entry_price - exit_price) * 100
+            trades.append({
+                'entry_time':  pending['datetime_utc'],
+                'exit_time':   row['datetime_utc'],
+                'direction':   direction,
+                'entry_price': entry_price,
+                'exit_price':  exit_price,
+                'pips':        pips,
+            })
+            pending = None
+
+    return trades
+
+
+def create_chart(df, trades, chart_height=600):
+    candlestick_data = []
+    for _, row in df.iterrows():
+        if pd.notna(row.get('ha_open')) and pd.notna(row.get('ha_close')):
+            try:
+                candlestick_data.append({
+                    'time':  calendar.timegm(row['time'].timetuple()),
+                    'open':  round(float(row['ha_open']),  5),
+                    'high':  round(float(row['ha_high']),  5),
+                    'low':   round(float(row['ha_low']),   5),
+                    'close': round(float(row['ha_close']), 5),
+                })
+            except:
+                continue
+
+    sma_data = []
+    for _, row in df.iterrows():
+        if pd.notna(row.get('sma')):
+            try:
+                sma_data.append({
+                    'time':  calendar.timegm(row['time'].timetuple()),
+                    'value': round(float(row['sma']), 5),
+                })
+            except:
+                continue
+
+    markers = []
+    trades_for_js = []
+    table_rows_html = ''
+    cum_pips = 0
+
+    for i, trade in enumerate(trades):
+        entry_ts = calendar.timegm(pd.Timestamp(trade['entry_time']).timetuple())
+        exit_ts  = calendar.timegm(pd.Timestamp(trade['exit_time']).timetuple())
+        cum_pips += trade['pips']
+        pips_color = COLOR_PROFIT if trade['pips'] > 0 else COLOR_LOSS
+        cum_color  = COLOR_PROFIT if cum_pips >= 0 else COLOR_LOSS
+        dir_color  = COLOR_LONG if trade['direction'] == 'long' else COLOR_SHORT
+        dir_label  = 'Long' if trade['direction'] == 'long' else 'Short'
+
+        markers.append({
+            'time':     entry_ts,
+            'position': 'belowBar' if trade['direction'] == 'long' else 'aboveBar',
+            'color':    COLOR_ENTRY_MARKER,
+            'shape':    'arrowUp' if trade['direction'] == 'long' else 'arrowDown',
+            'text':     '',
+        })
+        markers.append({
+            'time':     exit_ts,
+            'position': 'aboveBar' if trade['direction'] == 'long' else 'belowBar',
+            'color':    COLOR_PROFIT if trade['pips'] > 0 else COLOR_LOSS,
+            'shape':    'circle' if trade['pips'] > 0 else 'square',
+            'text':     '',
+        })
+        trades_for_js.append({'entry_ts': entry_ts, 'exit_ts': exit_ts,
+                               'entry_price': trade['entry_price'], 'exit_price': trade['exit_price']})
+        table_rows_html += f"""<tr data-entry-ts="{entry_ts}">
+            <td>{i}</td><td>{trade['entry_time']}</td><td>{trade['exit_time']}</td>
+            <td style="color:{dir_color}">{dir_label}</td>
+            <td>{trade['entry_price']:.3f}</td><td>{trade['exit_price']:.3f}</td>
+            <td style="color:{pips_color}">{trade['pips']:.2f}</td>
+            <td style="color:{cum_color}">{cum_pips:.2f}</td>
+        </tr>"""
+
+    candle_json  = json.dumps(candlestick_data)
+    sma_json     = json.dumps(sma_data)
+    markers_json = json.dumps(markers)
+    trades_json  = json.dumps(trades_for_js)
+
+    html = f"""<!DOCTYPE html><html><head>
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        body {{ margin:0; padding:0; background:#1e1e1e; }}
+        #chart {{ width:100%; height:{chart_height}px; }}
+        #trade-table-container {{ max-height:300px; overflow-y:auto; margin-top:8px; background:#1e1e1e; }}
+        #trade-table {{ width:100%; border-collapse:collapse; font-family:monospace; font-size:12px; color:#d1d4dc; }}
+        #trade-table th {{ background:#2B2B43; padding:6px 10px; text-align:left; position:sticky; top:0; z-index:1; white-space:nowrap; }}
+        #trade-table td {{ padding:4px 10px; border-bottom:1px solid #2B2B43; white-space:nowrap; }}
+        #trade-table tbody tr:hover {{ background:#2a3a4a; cursor:pointer; }}
+        #trade-table tbody tr.highlighted {{ background:#1a4a7a !important; }}
+    </style></head><body>
+    <div id="chart"></div>
+    <div id="trade-table-container">
+        <table id="trade-table">
+            <thead><tr>
+                <th>#</th><th>entry_time</th><th>exit_time</th><th>direction</th>
+                <th>entry_price</th><th>exit_price</th><th>pips</th><th>累積pips</th>
+            </tr></thead>
+            <tbody>{table_rows_html}</tbody>
+        </table>
+    </div>
+    <script>
+    setTimeout(function() {{
+        const chartElement = document.getElementById('chart');
+        const chart = LightweightCharts.createChart(chartElement, {{
+            width: chartElement.clientWidth, height: {chart_height},
+            layout: {{ background: {{ color: '#1e1e1e' }}, textColor: '#d1d4dc' }},
+            localization: {{ timeFormatter: (t) => {{
+                const d = new Date(t * 1000);
+                return d.getUTCFullYear() + '/' + String(d.getUTCMonth()+1).padStart(2,'0') + '/' +
+                       String(d.getUTCDate()).padStart(2,'0') + ' ' +
+                       String(d.getUTCHours()).padStart(2,'0') + ':' + String(d.getUTCMinutes()).padStart(2,'0');
+            }} }},
+            grid: {{ vertLines: {{ color: '#2B2B43' }}, horzLines: {{ color: '#363C4E' }} }},
+            rightPriceScale: {{ borderColor: '#2B2B43' }},
+            timeScale: {{ borderColor: '#2B2B43', timeVisible: true, secondsVisible: false }},
+        }});
+        const candleSeries = chart.addCandlestickSeries({{
+            upColor: '{COLOR_LONG}', downColor: '{COLOR_SHORT}',
+            borderUpColor: '{COLOR_LONG}', borderDownColor: '{COLOR_SHORT}',
+            wickUpColor: '{COLOR_LONG}', wickDownColor: '{COLOR_SHORT}',
+            priceLineVisible: false,
+        }});
+        candleSeries.setData({candle_json});
+        const smaSeries = chart.addLineSeries({{ color: '#ff9800', lineWidth: 2, title: '{SMA_PERIOD}SMA', priceLineVisible: false }});
+        smaSeries.setData({sma_json});
+        candleSeries.setMarkers({markers_json});
+
+        chartElement.style.position = 'relative';
+        const lineCanvas = document.createElement('canvas');
+        lineCanvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:9999;';
+        lineCanvas.width = chartElement.clientWidth;
+        lineCanvas.height = {chart_height};
+        chartElement.appendChild(lineCanvas);
+
+        let clickedTs = null, entryPrice = null, exitPrice = null;
+        const tradesData = {trades_json};
+
+        function drawLines() {{
+            const ctx = lineCanvas.getContext('2d');
+            lineCanvas.width = chartElement.clientWidth;
+            lineCanvas.height = {chart_height};
+            ctx.clearRect(0, 0, lineCanvas.width, lineCanvas.height);
+            if (clickedTs !== null) {{
+                const x = chart.timeScale().timeToCoordinate(clickedTs);
+                if (x !== null) {{
+                    ctx.beginPath(); ctx.strokeStyle = '{COLOR_CLICK_LINE}'; ctx.lineWidth = 1;
+                    ctx.setLineDash([4,4]); ctx.moveTo(x,0); ctx.lineTo(x, lineCanvas.height); ctx.stroke();
+                }}
+            }}
+            function drawHLine(price, color, label) {{
+                const y = candleSeries.priceToCoordinate(price);
+                if (y === null || y < 0 || y > lineCanvas.height) return;
+                ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+                ctx.moveTo(0,y); ctx.lineTo(lineCanvas.width,y); ctx.stroke(); ctx.setLineDash([]);
+                const tw = ctx.measureText(label).width;
+                ctx.fillStyle = color; ctx.fillRect(lineCanvas.width-tw-14, y-9, tw+10, 16);
+                ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.fillText(label, lineCanvas.width-tw-9, y+3);
+            }}
+            if (entryPrice !== null) drawHLine(entryPrice, '{COLOR_LONG}', 'Entry ' + entryPrice.toFixed(3));
+            if (exitPrice  !== null) drawHLine(exitPrice,  '{COLOR_SHORT}', 'Exit '  + exitPrice.toFixed(3));
+        }}
+        chart.timeScale().subscribeVisibleTimeRangeChange(drawLines);
+        chart.subscribeCrosshairMove(drawLines);
+        chart.subscribeClick(function(param) {{
+            if (!param.time) return;
+            clickedTs = param.time; entryPrice = null; exitPrice = null;
+            const matched = tradesData.find(t => t.entry_ts === param.time);
+            if (matched) {{ entryPrice = matched.entry_price; exitPrice = matched.exit_price; }}
+            drawLines();
+            document.querySelectorAll('#trade-table tbody tr').forEach(r => r.classList.remove('highlighted'));
+            if (matched) {{
+                document.querySelectorAll('#trade-table tbody tr').forEach(r => {{
+                    if (parseInt(r.dataset.entryTs) === matched.entry_ts) {{
+                        r.classList.add('highlighted');
+                        r.scrollIntoView({{ behavior:'smooth', block:'nearest' }});
+                    }}
+                }});
+            }}
+        }});
+        window.addEventListener('resize', () => {{ try {{ chart.applyOptions({{ width: chartElement.clientWidth }}); }} catch(e) {{}} }});
+        chart.timeScale().fitContent();
+    }}, 100);
+    </script></body></html>"""
+    return html
+
+
+# ========== Streamlit UI ==========
+
+st.set_page_config(page_title='FES ライブモニター', layout='wide')
 st.title('FES ライブモニター')
 st.caption(f'最終更新: {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")} UTC')
 
-# ---- 現在の状態 ----
-st.subheader('現在の状態')
+df = load_candles()
+trades = load_trades()
 
-cassette = load_cassette(str(CASSETTE_PATH))
-df = build_df(DEFAULT_INSTRUMENT, cassette)
+if df is None:
+    st.warning('candle_log.csv がまだありません。しばらくお待ちください。')
+    st.stop()
 
-if df is not None:
-    last  = df.iloc[-2]  # 最新確定足
-    price = last['close']
-    sma   = last['sma']
-    ha_color = last['ha_color']
+st.caption(f'取得済み足数: {len(df)} 本 　最新: {df["time"].iloc[-1].strftime("%Y-%m-%d %H:%M")} UTC')
 
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric('銘柄',     DEFAULT_INSTRUMENT)
-    col2.metric('現在価格', f'{price:.3f}')
-    col3.metric('75SMA',   f'{sma:.3f}')
-    col4.metric('価格の位置', 'SMAの上' if price > sma else 'SMAの下')
+chart_html = create_chart(df, trades)
+components.html(chart_html, height=600 + 350, scrolling=True)
 
-    st.write(f'平均足の色: {"🔵 青（BUY側）" if ha_color == 1 else "🔴 赤（SELL側）"}')
-else:
-    st.error('OANDAからデータを取得できませんでした')
-
-# ---- トレード履歴 ----
-st.subheader('トレード履歴')
-
-if LOG_FILE.exists():
-    log_df = pd.read_csv(LOG_FILE)
-    st.dataframe(log_df, use_container_width=True)
-else:
-    st.info('まだトレードなし')
-
-st.button('更新')
+if st.button('更新'):
+    st.rerun()
