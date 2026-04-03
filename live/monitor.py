@@ -9,7 +9,10 @@ import sys
 import calendar
 import json
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+
+JST = timezone(timedelta(hours=9))
+JST_OFFSET = 9 * 3600  # チャートタイムスタンプ用
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -72,7 +75,7 @@ def create_chart(df, trades, chart_height=600):
         if pd.notna(row.get('ha_open')) and pd.notna(row.get('ha_close')):
             try:
                 candlestick_data.append({
-                    'time':  calendar.timegm(row['time'].timetuple()),
+                    'time':  calendar.timegm(row['time'].timetuple()) + JST_OFFSET,
                     'open':  round(float(row['ha_open']),  5),
                     'high':  round(float(row['ha_high']),  5),
                     'low':   round(float(row['ha_low']),   5),
@@ -86,7 +89,7 @@ def create_chart(df, trades, chart_height=600):
         if pd.notna(row.get('sma')):
             try:
                 sma_data.append({
-                    'time':  calendar.timegm(row['time'].timetuple()),
+                    'time':  calendar.timegm(row['time'].timetuple()) + JST_OFFSET,
                     'value': round(float(row['sma']), 5),
                 })
             except:
@@ -98,8 +101,8 @@ def create_chart(df, trades, chart_height=600):
     cum_pips = 0
 
     for i, trade in enumerate(trades):
-        entry_ts = calendar.timegm(pd.Timestamp(trade['entry_time']).timetuple())
-        exit_ts  = calendar.timegm(pd.Timestamp(trade['exit_time']).timetuple())
+        entry_ts = calendar.timegm(pd.Timestamp(trade['entry_time']).timetuple()) + JST_OFFSET
+        exit_ts  = calendar.timegm(pd.Timestamp(trade['exit_time']).timetuple()) + JST_OFFSET
         cum_pips += trade['pips']
         pips_color = COLOR_PROFIT if trade['pips'] > 0 else COLOR_LOSS
         cum_color  = COLOR_PROFIT if cum_pips >= 0 else COLOR_LOSS
@@ -247,7 +250,7 @@ def create_chart(df, trades, chart_height=600):
 
 st.set_page_config(page_title='FES ライブモニター', layout='wide')
 st.title('FES ライブモニター')
-st.caption(f'最終更新: {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")} UTC')
+st.caption(f'最終更新: {datetime.now(JST).strftime("%Y-%m-%d %H:%M")} JST')
 
 df = load_candles()
 trades = load_trades()
@@ -256,7 +259,7 @@ if df is None:
     st.warning('candle_log.csv がまだありません。しばらくお待ちください。')
     st.stop()
 
-st.caption(f'取得済み足数: {len(df)} 本 　最新: {df["time"].iloc[-1].strftime("%Y-%m-%d %H:%M")} UTC')
+st.caption(f'取得済み足数: {len(df)} 本 　最新: {df["time"].iloc[-1].astimezone(JST).strftime("%Y-%m-%d %H:%M")} JST')
 
 chart_html = create_chart(df, trades)
 components.html(chart_html, height=600 + 350, scrolling=True)
