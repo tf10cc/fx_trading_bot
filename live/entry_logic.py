@@ -180,6 +180,16 @@ def run_once(df, cassette, position, instrument=DEFAULT_INSTRUMENT):
     """
     idx = len(df) - 2  # 最新の確定済み足
 
+    prev_color = df['ha_color'].iloc[idx - 1]
+    curr_color = df['ha_color'].iloc[idx]
+    sma_now = df['sma'].iloc[idx]
+    sma_5ago = df['sma'].iloc[idx - 5]
+    print(f'[DEBUG] 判定足={df["time"].iloc[idx]}')
+    print(f'[DEBUG] prev_color={prev_color}, curr_color={curr_color}')
+    print(f'[DEBUG] sma_now={sma_now:.4f}, sma_5ago={sma_5ago:.4f}')
+    print(f'[DEBUG] ha_body_bottom={df["ha_body_bottom"].iloc[idx]:.4f}')
+    print(f'[DEBUG] ha_body_top={df["ha_body_top"].iloc[idx]:.4f}')
+
     if position is None:
         if cassette.check_long_entry(df, idx):
             print('✅ BUY シグナル → 注文送信')
