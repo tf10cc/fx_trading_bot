@@ -39,7 +39,7 @@ def load_candles():
 
 
 def load_trades():
-    """trade_log.csv からエントリー・決済をペアにして返す"""
+    """trade_log.csv からエントリー・決済をペアにして返す（決済待ちも含む）"""
     if not TRADE_LOG.exists():
         return []
     log = pd.read_csv(TRADE_LOG)
@@ -63,8 +63,22 @@ def load_trades():
                 'entry_price': entry_price,
                 'exit_price':  exit_price,
                 'pips':        pips,
+                'open':        False,
             })
             pending = None
+
+    # 決済待ちのエントリーも追加
+    if pending is not None:
+        direction = 'long' if pending['action'] == 'BUY' else 'short'
+        trades.append({
+            'entry_time':  pending['datetime_utc'],
+            'exit_time':   '決済待ち',
+            'direction':   direction,
+            'entry_price': float(pending['price']),
+            'exit_price':  None,
+            'pips':        None,
+            'open':        True,
+        })
 
     return trades
 
@@ -101,13 +115,9 @@ def create_chart(df, trades, chart_height=600):
     cum_pips = 0
 
     for i, trade in enumerate(trades):
-        entry_ts = calendar.timegm(pd.Timestamp(trade['entry_time']).timetuple()) + JST_OFFSET
-        exit_ts  = calendar.timegm(pd.Timestamp(trade['exit_time']).timetuple()) + JST_OFFSET
-        cum_pips += trade['pips']
-        pips_color = COLOR_PROFIT if trade['pips'] > 0 else COLOR_LOSS
-        cum_color  = COLOR_PROFIT if cum_pips >= 0 else COLOR_LOSS
-        dir_color  = COLOR_LONG if trade['direction'] == 'long' else COLOR_SHORT
-        dir_label  = 'Long' if trade['direction'] == 'long' else 'Short'
+        entry_ts  = calendar.timegm(pd.Timestamp(trade['entry_time']).timetuple()) + JST_OFFSET
+        dir_color = COLOR_LONG if trade['direction'] == 'long' else COLOR_SHORT
+        dir_label = 'Long' if trade['direction'] == 'long' else 'Short'
 
         markers.append({
             'time':     entry_ts,
@@ -116,22 +126,36 @@ def create_chart(df, trades, chart_height=600):
             'shape':    'arrowUp' if trade['direction'] == 'long' else 'arrowDown',
             'text':     '',
         })
-        markers.append({
-            'time':     exit_ts,
-            'position': 'aboveBar' if trade['direction'] == 'long' else 'belowBar',
-            'color':    COLOR_PROFIT if trade['pips'] > 0 else COLOR_LOSS,
-            'shape':    'circle' if trade['pips'] > 0 else 'square',
-            'text':     '',
-        })
-        trades_for_js.append({'entry_ts': entry_ts, 'exit_ts': exit_ts,
-                               'entry_price': trade['entry_price'], 'exit_price': trade['exit_price']})
-        table_rows_html += f"""<tr data-entry-ts="{entry_ts}">
-            <td>{i}</td><td>{trade['entry_time']}</td><td>{trade['exit_time']}</td>
-            <td style="color:{dir_color}">{dir_label}</td>
-            <td>{trade['entry_price']:.3f}</td><td>{trade['exit_price']:.3f}</td>
-            <td style="color:{pips_color}">{trade['pips']:.2f}</td>
-            <td style="color:{cum_color}">{cum_pips:.2f}</td>
-        </tr>"""
+
+        if trade['open']:
+            # 決済待ち
+            table_rows_html += f"""<tr data-entry-ts="{entry_ts}" style="background:#2a2a00;">
+                <td>{i}</td><td>{trade['entry_time']}</td><td style="color:#ffcc00;">決済待ち</td>
+                <td style="color:{dir_color}">{dir_label}</td>
+                <td>{trade['entry_price']:.3f}</td><td>-</td>
+                <td>-</td><td style="color:#ffcc00;">open</td>
+            </tr>"""
+        else:
+            exit_ts   = calendar.timegm(pd.Timestamp(trade['exit_time']).timetuple()) + JST_OFFSET
+            cum_pips += trade['pips']
+            pips_color = COLOR_PROFIT if trade['pips'] > 0 else COLOR_LOSS
+            cum_color  = COLOR_PROFIT if cum_pips >= 0 else COLOR_LOSS
+            markers.append({
+                'time':     exit_ts,
+                'position': 'aboveBar' if trade['direction'] == 'long' else 'belowBar',
+                'color':    COLOR_PROFIT if trade['pips'] > 0 else COLOR_LOSS,
+                'shape':    'circle' if trade['pips'] > 0 else 'square',
+                'text':     '',
+            })
+            trades_for_js.append({'entry_ts': entry_ts, 'exit_ts': exit_ts,
+                                   'entry_price': trade['entry_price'], 'exit_price': trade['exit_price']})
+            table_rows_html += f"""<tr data-entry-ts="{entry_ts}">
+                <td>{i}</td><td>{trade['entry_time']}</td><td>{trade['exit_time']}</td>
+                <td style="color:{dir_color}">{dir_label}</td>
+                <td>{trade['entry_price']:.3f}</td><td>{trade['exit_price']:.3f}</td>
+                <td style="color:{pips_color}">{trade['pips']:.2f}</td>
+                <td style="color:{cum_color}">{cum_pips:.2f}</td>
+            </tr>"""
 
     candle_json  = json.dumps(candlestick_data)
     sma_json     = json.dumps(sma_data)
