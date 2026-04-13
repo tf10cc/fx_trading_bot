@@ -8,6 +8,7 @@ FES entry_logic.py  ライブトレード（書き直し版）
 """
 
 import csv
+import json
 import os
 import sys
 import time
@@ -30,6 +31,22 @@ SMA_PERIOD          = 75
 OANDA_API_URL       = 'https://api-fxpractice.oanda.com/v3'
 LOG_FILE            = Path(__file__).parent / 'trade_log.csv'
 LOG_HEADERS         = ['datetime_utc', 'action', 'instrument', 'price']
+POSITION_FILE       = Path(__file__).parent / 'position_state.json'
+
+
+# ---- ポジション状態の保存・読み込み ----
+
+def load_position():
+    """ポジション状態をファイルから読み込む"""
+    if POSITION_FILE.exists():
+        with open(POSITION_FILE, 'r') as f:
+            return json.load(f).get('position')
+    return None
+
+def save_position(position):
+    """ポジション状態をファイルに保存する"""
+    with open(POSITION_FILE, 'w') as f:
+        json.dump({'position': position}, f)
 
 
 # ---- ログ書き出し ----
@@ -271,6 +288,8 @@ if __name__ == '__main__':
         print('【テストモード】1回だけ実行して終了')
         df = build_df(DEFAULT_INSTRUMENT, cassette)
         if df is not None:
-            run_once(df, cassette, None, DEFAULT_INSTRUMENT)
+            position = load_position()
+            new_position = run_once(df, cassette, position, DEFAULT_INSTRUMENT)
+            save_position(new_position)
     else:
         main_loop(cassette)
