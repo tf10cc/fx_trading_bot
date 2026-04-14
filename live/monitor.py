@@ -111,7 +111,7 @@ def create_chart(df, trades, chart_height=600):
 
     markers = []
     trades_for_js = []
-    table_rows_html = ''
+    rows_data = []
     cum_pips = 0
 
     for i, trade in enumerate(trades):
@@ -128,18 +128,14 @@ def create_chart(df, trades, chart_height=600):
         })
 
         if trade['open']:
-            # 決済待ち
-            table_rows_html += f"""<tr data-entry-ts="{entry_ts}" style="background:#2a2a00;">
-                <td>{i}</td><td>{trade['entry_time']}</td><td style="color:#ffcc00;">決済待ち</td>
-                <td style="color:{dir_color}">{dir_label}</td>
-                <td>{trade['entry_price']:.3f}</td><td>-</td>
-                <td>-</td><td style="color:#ffcc00;">open</td>
-            </tr>"""
+            rows_data.append({
+                'open': True, 'i': i, 'entry_ts': entry_ts,
+                'entry_time': trade['entry_time'], 'dir_color': dir_color, 'dir_label': dir_label,
+                'entry_price': trade['entry_price'],
+            })
         else:
             exit_ts   = calendar.timegm(pd.Timestamp(trade['exit_time']).timetuple()) + JST_OFFSET
             cum_pips += trade['pips']
-            pips_color = COLOR_PROFIT if trade['pips'] > 0 else COLOR_LOSS
-            cum_color  = COLOR_PROFIT if cum_pips >= 0 else COLOR_LOSS
             markers.append({
                 'time':     exit_ts,
                 'position': 'aboveBar' if trade['direction'] == 'long' else 'belowBar',
@@ -149,12 +145,33 @@ def create_chart(df, trades, chart_height=600):
             })
             trades_for_js.append({'entry_ts': entry_ts, 'exit_ts': exit_ts,
                                    'entry_price': trade['entry_price'], 'exit_price': trade['exit_price']})
-            table_rows_html += f"""<tr data-entry-ts="{entry_ts}">
-                <td>{i}</td><td>{trade['entry_time']}</td><td>{trade['exit_time']}</td>
-                <td style="color:{dir_color}">{dir_label}</td>
-                <td>{trade['entry_price']:.3f}</td><td>{trade['exit_price']:.3f}</td>
-                <td style="color:{pips_color}">{trade['pips']:.2f}</td>
-                <td style="color:{cum_color}">{cum_pips:.2f}</td>
+            rows_data.append({
+                'open': False, 'i': i, 'entry_ts': entry_ts,
+                'entry_time': trade['entry_time'], 'exit_time': trade['exit_time'],
+                'dir_color': dir_color, 'dir_label': dir_label,
+                'entry_price': trade['entry_price'], 'exit_price': trade['exit_price'],
+                'pips': trade['pips'], 'cum_pips': cum_pips,
+            })
+
+    # テーブルHTML：新しい順（上が最新）
+    table_rows_html = ''
+    for row in reversed(rows_data):
+        if row['open']:
+            table_rows_html += f"""<tr data-entry-ts="{row['entry_ts']}" style="background:#2a2a00;">
+                <td>{row['i']}</td><td>{row['entry_time']}</td><td style="color:#ffcc00;">決済待ち</td>
+                <td style="color:{row['dir_color']}">{row['dir_label']}</td>
+                <td>{row['entry_price']:.3f}</td><td>-</td>
+                <td>-</td><td style="color:#ffcc00;">open</td>
+            </tr>"""
+        else:
+            pips_color = COLOR_PROFIT if row['pips'] > 0 else COLOR_LOSS
+            cum_color  = COLOR_PROFIT if row['cum_pips'] >= 0 else COLOR_LOSS
+            table_rows_html += f"""<tr data-entry-ts="{row['entry_ts']}">
+                <td>{row['i']}</td><td>{row['entry_time']}</td><td>{row['exit_time']}</td>
+                <td style="color:{row['dir_color']}">{row['dir_label']}</td>
+                <td>{row['entry_price']:.3f}</td><td>{row['exit_price']:.3f}</td>
+                <td style="color:{pips_color}">{row['pips']:.2f}</td>
+                <td style="color:{cum_color}">{row['cum_pips']:.2f}</td>
             </tr>"""
 
     candle_json  = json.dumps(candlestick_data)
@@ -284,6 +301,20 @@ if df is None:
     st.stop()
 
 st.caption(f'取得済み足数: {len(df)} 本 　最新: {df["time"].iloc[-1].astimezone(JST).strftime("%Y-%m-%d %H:%M")} JST')
+
+# サマリー
+closed = [t for t in trades if not t['open']]
+total_pips = sum(t['pips'] for t in closed)
+wins = sum(1 for t in closed if t['pips'] > 0)
+n = len(closed)
+win_rate = wins / n * 100 if n > 0 else 0
+open_trade = next((t for t in trades if t['open']), None)
+status = f"{'Long' if open_trade['direction'] == 'long' else 'Short'} 保有中" if open_trade else "待機中"
+col1, col2, col3, col4 = st.columns(4)
+col1.metric('累積pips', f'{total_pips:+.2f}')
+col2.metric('勝率', f'{win_rate:.0f}%  ({wins}/{n})')
+col3.metric('トレード数', f'{n} 件')
+col4.metric('現在', status)
 
 chart_html = create_chart(df, trades)
 components.html(chart_html, height=600 + 350, scrolling=True)
