@@ -245,13 +245,17 @@ def run_once(df, cassette, position, instrument=DEFAULT_INSTRUMENT):
 # ---- メインループ（毎時0分に実行） ----
 
 def main_loop(cassette, instrument=DEFAULT_INSTRUMENT):
-    position = None  # 現在のポジション（None / 'long' / 'short'）
+    position = load_position()  # 起動時にポジションを読み込む
 
     print(f'FES ライブトレード起動')
     print(f'カセット  : {getattr(cassette, "NAME", "不明")}')
     print(f'銘柄      : {instrument}')
     print(f'足の種類  : {getattr(cassette, "GRANULARITY", DEFAULT_GRANULARITY)}')
     print(f'取得本数  : {getattr(cassette, "COUNT", DEFAULT_COUNT)}')
+    print(f'ポジション: {position}')
+
+    granularity = getattr(cassette, 'GRANULARITY', DEFAULT_GRANULARITY)
+    interval = 300 if granularity == 'M5' else 3600  # M5=5分, H1=1時間
 
     while True:
         now = datetime.now(timezone.utc)
@@ -261,11 +265,13 @@ def main_loop(cassette, instrument=DEFAULT_INSTRUMENT):
         df = build_df(instrument, cassette)
         if df is not None:
             position = run_once(df, cassette, position, instrument)
+            save_position(position)
         else:
-            print('データ取得エラー。次の時間まで待機します')
+            print('データ取得エラー。次の足まで待機します')
 
-        # 次の時間0分まで待機
-        wait_seconds = 3600 - (now.minute * 60 + now.second)
+        # 次の足の始まりまで待機
+        elapsed = (now.minute * 60 + now.second) % interval
+        wait_seconds = interval - elapsed
         print(f'次の判定まで {wait_seconds // 60} 分 {wait_seconds % 60} 秒待機...')
         time.sleep(wait_seconds)
 
