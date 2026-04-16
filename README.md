@@ -73,7 +73,7 @@ pip install -r requirements.txt
 
 ### 6. 起動
 
-`■run_streamlit_lightweight.bat` をダブルクリックしてください。
+`■backtest.bat` をダブルクリックしてください。
 
 ブラウザで `http://localhost:8501` が開きます。
 
@@ -136,9 +136,11 @@ def check_short_exit(df, idx):
 
 ---
 
-## OANDAライブシグナル（開発予定）
+## OANDAライブトレード（稼働中）
 
-> ⚠️ 現在未実装・開発予定の機能です。
+2026年4月現在、ConoHa VPS にて稼働中です（暫定版）。
+
+ライブモニター: http://fes.fushimi.org:8501
 
 ---
 
