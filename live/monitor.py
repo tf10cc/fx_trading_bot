@@ -83,6 +83,10 @@ def load_trades():
     return trades
 
 
+def utc_str_to_jst(s):
+    return pd.Timestamp(s, tz='UTC').astimezone(JST).strftime('%Y-%m-%d %H:%M')
+
+
 def create_chart(df, trades, chart_height=600):
     candlestick_data = []
     for _, row in df.iterrows():
@@ -130,7 +134,7 @@ def create_chart(df, trades, chart_height=600):
         if trade['open']:
             rows_data.append({
                 'open': True, 'i': i, 'entry_ts': entry_ts,
-                'entry_time': trade['entry_time'], 'dir_color': dir_color, 'dir_label': dir_label,
+                'entry_time': utc_str_to_jst(trade['entry_time']), 'dir_color': dir_color, 'dir_label': dir_label,
                 'entry_price': trade['entry_price'],
             })
         else:
@@ -147,7 +151,7 @@ def create_chart(df, trades, chart_height=600):
                                    'entry_price': trade['entry_price'], 'exit_price': trade['exit_price']})
             rows_data.append({
                 'open': False, 'i': i, 'entry_ts': entry_ts,
-                'entry_time': trade['entry_time'], 'exit_time': trade['exit_time'],
+                'entry_time': utc_str_to_jst(trade['entry_time']), 'exit_time': utc_str_to_jst(trade['exit_time']),
                 'dir_color': dir_color, 'dir_label': dir_label,
                 'entry_price': trade['entry_price'], 'exit_price': trade['exit_price'],
                 'pips': trade['pips'], 'cum_pips': cum_pips,
