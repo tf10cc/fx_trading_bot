@@ -233,7 +233,7 @@ def create_chart(df, trades, chart_height=600):
         candleSeries.setData({candle_json});
         const smaSeries = chart.addLineSeries({{ color: '#ff9800', lineWidth: 2, title: '{SMA_PERIOD}SMA', priceLineVisible: false }});
         smaSeries.setData({sma_json});
-        candleSeries.setMarkers({markers_json});
+        candleSeries.setMarkers([]);
 
         chartElement.style.position = 'relative';
         const lineCanvas = document.createElement('canvas');
@@ -260,7 +260,7 @@ def create_chart(df, trades, chart_height=600):
                 if (x1 === null || x2 === null || y1 === null || y2 === null) return;
                 const tradeColor = trade.profitable ? '{COLOR_PROFIT}' : '{COLOR_LOSS}';
                 const entryColor = trade.direction === 'long' ? '{COLOR_LONG}' : '{COLOR_SHORT}';
-                const r = 7;
+                const r = 12;
 
                 // 連結線
                 ctx.beginPath();
@@ -278,7 +278,7 @@ def create_chart(df, trades, chart_height=600):
                 ctx.fillStyle = entryColor;
                 ctx.fill();
                 ctx.fillStyle = '#fff';
-                ctx.font = 'bold 9px sans-serif';
+                ctx.font = 'bold 13px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(trade.direction === 'long' ? '▲' : '▼', x1, y1);
