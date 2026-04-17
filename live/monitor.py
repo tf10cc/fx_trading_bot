@@ -23,7 +23,7 @@ TRADE_LOG  = Path(__file__).parent / 'trade_log.csv'
 
 COLOR_PROFIT       = '#4CAF50'
 COLOR_LOSS         = '#f23645'
-COLOR_LOSS_MARKER  = '#FF6600'
+COLOR_LOSS_MARKER  = '#FFD700'
 COLOR_LONG         = '#26a69a'
 COLOR_SHORT        = '#ef5350'
 COLOR_ENTRY_MARKER = '#2196F3'
