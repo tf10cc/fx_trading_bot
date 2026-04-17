@@ -22,7 +22,7 @@ CANDLE_LOG = Path(__file__).parent / 'candle_log.csv'
 TRADE_LOG  = Path(__file__).parent / 'trade_log.csv'
 
 COLOR_PROFIT       = '#4CAF50'
-COLOR_LOSS         = '#f23645'
+COLOR_LOSS         = '#FF6600'
 COLOR_LONG         = '#26a69a'
 COLOR_SHORT        = '#ef5350'
 COLOR_ENTRY_MARKER = '#2196F3'
@@ -145,7 +145,7 @@ def create_chart(df, trades, chart_height=600):
                 'position': 'aboveBar' if trade['direction'] == 'long' else 'belowBar',
                 'color':    COLOR_PROFIT if trade['pips'] > 0 else COLOR_LOSS,
                 'shape':    'circle' if trade['pips'] > 0 else 'square',
-                'text':     '',
+                'text':     '' if trade['pips'] > 0 else '×',
             })
             trades_for_js.append({'entry_ts': entry_ts, 'exit_ts': exit_ts,
                                    'entry_price': trade['entry_price'], 'exit_price': trade['exit_price']})
