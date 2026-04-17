@@ -150,7 +150,8 @@ def create_chart(df, trades, chart_height=600):
             })
             trades_for_js.append({'entry_ts': entry_ts, 'exit_ts': exit_ts,
                                    'entry_price': trade['entry_price'], 'exit_price': trade['exit_price'],
-                                   'profitable': trade['pips'] > 0})
+                                   'profitable': trade['pips'] > 0,
+                                   'direction': trade['direction']})
             rows_data.append({
                 'open': False, 'i': i, 'entry_ts': entry_ts,
                 'entry_time': utc_str_to_jst(trade['entry_time']), 'exit_time': utc_str_to_jst(trade['exit_time']),
@@ -250,22 +251,45 @@ def create_chart(df, trades, chart_height=600):
             lineCanvas.height = {chart_height};
             ctx.clearRect(0, 0, lineCanvas.width, lineCanvas.height);
 
-            // エントリー→決済の連結線
+            // エントリー→決済の連結線・円マーカー
             tradesData.forEach(function(trade) {{
                 const x1 = chart.timeScale().timeToCoordinate(trade.entry_ts);
                 const x2 = chart.timeScale().timeToCoordinate(trade.exit_ts);
                 const y1 = candleSeries.priceToCoordinate(trade.entry_price);
                 const y2 = candleSeries.priceToCoordinate(trade.exit_price);
-                if (x1 !== null && x2 !== null && y1 !== null && y2 !== null) {{
-                    ctx.beginPath();
-                    ctx.strokeStyle = trade.profitable ? '{COLOR_PROFIT}' : '{COLOR_LOSS}';
-                    ctx.lineWidth = 1;
-                    ctx.setLineDash([4, 4]);
-                    ctx.moveTo(x1, y1);
-                    ctx.lineTo(x2, y2);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                }}
+                if (x1 === null || x2 === null || y1 === null || y2 === null) return;
+                const tradeColor = trade.profitable ? '{COLOR_PROFIT}' : '{COLOR_LOSS}';
+                const entryColor = trade.direction === 'long' ? '{COLOR_LONG}' : '{COLOR_SHORT}';
+                const r = 7;
+
+                // 連結線
+                ctx.beginPath();
+                ctx.strokeStyle = tradeColor;
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 4]);
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // エントリー円
+                ctx.beginPath();
+                ctx.arc(x1, y1, r, 0, Math.PI * 2);
+                ctx.fillStyle = entryColor;
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 9px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(trade.direction === 'long' ? '▲' : '▼', x1, y1);
+
+                // エグジット円
+                ctx.beginPath();
+                ctx.arc(x2, y2, r, 0, Math.PI * 2);
+                ctx.fillStyle = tradeColor;
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.fillText('×', x2, y2);
             }});
 
             if (clickedTs !== null) {{
