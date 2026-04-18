@@ -330,7 +330,7 @@ def create_chart(df, trades, chart_height=600):
             }}
         }});
         window.addEventListener('resize', () => {{ try {{ chart.applyOptions({{ width: chartElement.clientWidth }}); }} catch(e) {{}} }});
-        chart.timeScale().fitContent();
+        chart.timeScale().setVisibleLogicalRange({{ from: Math.max(0, candleData.length - 120), to: candleData.length + 2 }});
     }}, 100);
     </script></body></html>"""
     return html

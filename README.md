@@ -140,7 +140,7 @@ def check_short_exit(df, idx):
 
 2026年4月現在、ConoHa VPS にて稼働中です（暫定版）。
 
-ライブモニター: http://fes.fushimi.org:8501
+ライブモニター: https://fes.fushimi.org
 
 ---
 
