@@ -259,7 +259,7 @@ def create_chart(df, trades, chart_height=600):
                 const y2 = candleSeries.priceToCoordinate(trade.exit_price);
                 if (x1 === null || x2 === null || y1 === null || y2 === null) return;
                 const tradeColor = trade.profitable ? '{COLOR_PROFIT}' : '{COLOR_LOSS}';
-                const entryColor = trade.direction === 'long' ? '{COLOR_LONG}' : '{COLOR_SHORT}';
+                const entryColor = '{COLOR_ENTRY_MARKER}';
                 const r = 12;
 
                 // 連結線
@@ -289,7 +289,7 @@ def create_chart(df, trades, chart_height=600):
                 ctx.fillStyle = tradeColor;
                 ctx.fill();
                 ctx.fillStyle = '#fff';
-                ctx.fillText('×', x2, y2);
+                ctx.fillText(trade.profitable ? '○' : '×', x2, y2);
             }});
 
             if (clickedTs !== null) {{
