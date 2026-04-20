@@ -148,10 +148,18 @@ def create_chart(df, trades, chart_height=600):
                 'shape':    'circle' if trade['pips'] > 0 else 'square',
                 'text':     '' if trade['pips'] > 0 else '×',
             })
+            entry_bar = df[df['time'] == pd.Timestamp(trade['entry_time'])]
+            exit_bar  = df[df['time'] == pd.Timestamp(trade['exit_time'])]
+            entry_low  = float(entry_bar['ha_low'].iloc[0])  if not entry_bar.empty else trade['entry_price']
+            entry_high = float(entry_bar['ha_high'].iloc[0]) if not entry_bar.empty else trade['entry_price']
+            exit_low   = float(exit_bar['ha_low'].iloc[0])   if not exit_bar.empty  else trade['exit_price']
+            exit_high  = float(exit_bar['ha_high'].iloc[0])  if not exit_bar.empty  else trade['exit_price']
             trades_for_js.append({'entry_ts': entry_ts, 'exit_ts': exit_ts,
                                    'entry_price': trade['entry_price'], 'exit_price': trade['exit_price'],
-                                   'profitable': trade['pips'] > 0,
-                                   'direction': trade['direction']})
+                                   'profitable': bool(trade['pips'] > 0),
+                                   'direction': trade['direction'],
+                                   'entry_low': entry_low, 'entry_high': entry_high,
+                                   'exit_low': exit_low, 'exit_high': exit_high})
             rows_data.append({
                 'open': False, 'i': i, 'entry_ts': entry_ts,
                 'entry_time': utc_str_to_jst(trade['entry_time']), 'exit_time': utc_str_to_jst(trade['exit_time']),
@@ -255,9 +263,22 @@ def create_chart(df, trades, chart_height=600):
             tradesData.forEach(function(trade) {{
                 const x1 = chart.timeScale().timeToCoordinate(trade.entry_ts);
                 const x2 = chart.timeScale().timeToCoordinate(trade.exit_ts);
-                const y1 = candleSeries.priceToCoordinate(trade.entry_price);
-                const y2 = candleSeries.priceToCoordinate(trade.exit_price);
-                if (x1 === null || x2 === null || y1 === null || y2 === null) return;
+                if (x1 === null || x2 === null) return;
+                const offset = 14;
+                const isLong = trade.direction === 'long';
+                const y1anchor = isLong
+                    ? candleSeries.priceToCoordinate(trade.entry_low)
+                    : candleSeries.priceToCoordinate(trade.entry_high);
+                const y2anchor = trade.profitable
+                    ? (isLong ? candleSeries.priceToCoordinate(trade.exit_high)
+                              : candleSeries.priceToCoordinate(trade.exit_low))
+                    : (isLong ? candleSeries.priceToCoordinate(trade.exit_low)
+                              : candleSeries.priceToCoordinate(trade.exit_high));
+                if (y1anchor === null || y2anchor === null) return;
+                const y1 = isLong ? y1anchor + offset : y1anchor - offset;
+                const y2 = trade.profitable
+                    ? (isLong ? y2anchor - offset : y2anchor + offset)
+                    : (isLong ? y2anchor + offset : y2anchor - offset);
                 const tradeColor = trade.profitable ? '{COLOR_PROFIT}' : '{COLOR_LOSS}';
                 const entryColor = '{COLOR_ENTRY_MARKER}';
                 const r = 12;
