@@ -148,8 +148,11 @@ def create_chart(df, trades, chart_height=600):
                 'shape':    'circle' if trade['pips'] > 0 else 'square',
                 'text':     '' if trade['pips'] > 0 else '×',
             })
-            entry_bar = df[df['time'] == pd.Timestamp(trade['entry_time'])]
-            exit_bar  = df[df['time'] == pd.Timestamp(trade['exit_time'])]
+            def to_utc(s):
+                ts = pd.Timestamp(s)
+                return ts.tz_localize('UTC') if ts.tzinfo is None else ts.tz_convert('UTC')
+            entry_bar = df[df['time'] == to_utc(trade['entry_time'])]
+            exit_bar  = df[df['time'] == to_utc(trade['exit_time'])]
             entry_low  = float(entry_bar['ha_low'].iloc[0])  if not entry_bar.empty else trade['entry_price']
             entry_high = float(entry_bar['ha_high'].iloc[0]) if not entry_bar.empty else trade['entry_price']
             exit_low   = float(exit_bar['ha_low'].iloc[0])   if not exit_bar.empty  else trade['exit_price']
