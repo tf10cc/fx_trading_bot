@@ -383,11 +383,24 @@ def create_lightweight_chart(df, trades, chart_height=600, jump_to=None, pip_uni
             <td style="color:{pips_color}">{trade['pips']:.2f}</td>
             <td style="color:{cum_color}">{cum_pips:.2f}</td>
         </tr>"""
+        # 足のhigh/lowを取得（ひげ基準でマーカーを配置するため）
+        entry_bar = df[df['time'] == pd.Timestamp(trade['entry_time'])]
+        exit_bar  = df[df['time'] == pd.Timestamp(trade['exit_time'])]
+        entry_low  = float(entry_bar['ha_low'].iloc[0])  if not entry_bar.empty  else trade['entry_price']
+        entry_high = float(entry_bar['ha_high'].iloc[0]) if not entry_bar.empty  else trade['entry_price']
+        exit_low   = float(exit_bar['ha_low'].iloc[0])   if not exit_bar.empty   else trade['exit_price']
+        exit_high  = float(exit_bar['ha_high'].iloc[0])  if not exit_bar.empty   else trade['exit_price']
         trades_for_js.append({
             'entry_ts':    entry_ts,
             'exit_ts':     exit_ts,
             'entry_price': trade['entry_price'],
             'exit_price':  trade['exit_price'],
+            'profitable':  bool(trade['pips'] > 0),
+            'direction':   trade['direction'],
+            'entry_low':   entry_low,
+            'entry_high':  entry_high,
+            'exit_low':    exit_low,
+            'exit_high':   exit_high,
         })
 
     # JSONに変換
@@ -519,8 +532,8 @@ def create_lightweight_chart(df, trades, chart_height=600, jump_to=None, pip_uni
             }});
             lineSeries.setData({sma_json});
 
-            // マーカー
-            candlestickSeries.setMarkers({markers_json});
+            // マーカー（組み込みは非表示・キャンバス円で代替）
+            candlestickSeries.setMarkers([]);
 
             // クリック縦線用canvasをチャートの上に重ねる
             chartElement.style.position = 'relative';
@@ -544,6 +557,60 @@ def create_lightweight_chart(df, trades, chart_height=600, jump_to=None, pip_uni
                 lineCanvas.width = chartElement.clientWidth;
                 lineCanvas.height = {chart_height};
                 ctx.clearRect(0, 0, lineCanvas.width, lineCanvas.height);
+
+                // エントリー→決済の連結線・円マーカー
+                tradesData.forEach(function(trade) {{
+                    const x1 = chart.timeScale().timeToCoordinate(trade.entry_ts);
+                    const x2 = chart.timeScale().timeToCoordinate(trade.exit_ts);
+                    if (x1 === null || x2 === null) return;
+                    const offset = 14;
+                    const isLong = trade.direction === 'long';
+                    const y1anchor = isLong
+                        ? candlestickSeries.priceToCoordinate(trade.entry_low)
+                        : candlestickSeries.priceToCoordinate(trade.entry_high);
+                    const y2anchor = trade.profitable
+                        ? (isLong ? candlestickSeries.priceToCoordinate(trade.exit_high)
+                                  : candlestickSeries.priceToCoordinate(trade.exit_low))
+                        : (isLong ? candlestickSeries.priceToCoordinate(trade.exit_low)
+                                  : candlestickSeries.priceToCoordinate(trade.exit_high));
+                    if (y1anchor === null || y2anchor === null) return;
+                    const y1 = isLong ? y1anchor + offset : y1anchor - offset;
+                    const y2 = trade.profitable
+                        ? (isLong ? y2anchor - offset : y2anchor + offset)
+                        : (isLong ? y2anchor + offset : y2anchor - offset);
+                    const tradeColor = trade.profitable ? '{COLOR_PROFIT}' : '{COLOR_LOSS}';
+                    const entryColor = '{COLOR_ENTRY_MARKER}';
+                    const r = 12;
+
+                    // 連結線
+                    ctx.beginPath();
+                    ctx.strokeStyle = tradeColor;
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([3, 3]);
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // エントリー円（青・▲▼）
+                    ctx.beginPath();
+                    ctx.arc(x1, y1, r, 0, Math.PI * 2);
+                    ctx.fillStyle = entryColor;
+                    ctx.fill();
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(trade.direction === 'long' ? '▲' : '▼', x1, y1);
+
+                    // エグジット円（緑○ or 赤×）
+                    ctx.beginPath();
+                    ctx.arc(x2, y2, r, 0, Math.PI * 2);
+                    ctx.fillStyle = tradeColor;
+                    ctx.fill();
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText(trade.profitable ? '○' : '×', x2, y2);
+                }});
 
                 // 縦線（クリックした時刻）
                 if (clickedTimestamp !== null) {{
@@ -662,6 +729,7 @@ def create_lightweight_chart(df, trades, chart_height=600, jump_to=None, pip_uni
                     chart.timeScale().fitContent();
                 }}
             }} catch(e) {{}}
+            drawLines();
             }}, 100);  // 100ms待機
         </script>
     </body>
