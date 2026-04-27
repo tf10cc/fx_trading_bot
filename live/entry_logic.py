@@ -187,15 +187,10 @@ def build_df(instrument, cassette):
 
 def run_once(df, cassette, position, instrument=DEFAULT_INSTRUMENT):
     """
-    最新の確定済み足（idx = 末尾から2番目）でカセットを呼び出し、
-    BUY / SELL / EXIT を判定して注文を送信する。
-
-    ※ OANDAは未確定の現在足も返す場合があるため、
-       安全のため末尾-1（1本前の確定足）で判定する。
-
+    直前の確定足で条件を判定し、シグナルが出たら次の足でエントリーする。
     Returns: 新しい position ('long' / 'short' / None)
     """
-    idx = len(df) - 2  # 最新の確定済み足
+    idx = len(df) - 1  # 直前の確定足（例：07:20実行なら07:15の足）
 
     prev_color = df['ha_color'].iloc[idx - 1]
     curr_color = df['ha_color'].iloc[idx]
