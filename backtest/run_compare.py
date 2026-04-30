@@ -68,11 +68,14 @@ class BacktestEngine:
         self.load_data()
         self.calculate_indicators()
         for idx in range(len(self.df)):
+            just_exited = False
             if self.current_position == 'long' and self.logic_module.check_long_exit(self.df, idx):
                 self._exit(idx)
+                just_exited = True
             elif self.current_position == 'short' and self.logic_module.check_short_exit(self.df, idx):
                 self._exit(idx)
-            if self.current_position is None:
+                just_exited = True
+            if self.current_position is None and not just_exited:
                 if self.logic_module.check_long_entry(self.df, idx):
                     self._enter(idx, 'long')
                 elif self.logic_module.check_short_entry(self.df, idx):
@@ -352,11 +355,14 @@ if __name__ == '__main__':
         bt2.df['ha_body_top']    = bt2.df[['ha_open', 'ha_close']].max(axis=1)
         bt2.df['ha_body_bottom'] = bt2.df[['ha_open', 'ha_close']].min(axis=1)
         for idx in range(len(bt2.df)):
+            just_exited = False
             if bt2.current_position == 'long' and bt2.logic_module.check_long_exit(bt2.df, idx):
                 bt2._exit(idx)
+                just_exited = True
             elif bt2.current_position == 'short' and bt2.logic_module.check_short_exit(bt2.df, idx):
                 bt2._exit(idx)
-            if bt2.current_position is None:
+                just_exited = True
+            if bt2.current_position is None and not just_exited:
                 if bt2.logic_module.check_long_entry(bt2.df, idx):
                     bt2._enter(idx, 'long')
                 elif bt2.logic_module.check_short_entry(bt2.df, idx):

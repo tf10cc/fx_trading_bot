@@ -217,16 +217,19 @@ class BacktestEngine:
         self.calculate_ha_color()
         self.calculate_ha_body()
         
-        # 1本ずつ処理（CLI版と同じ順序：決済→エントリー）
+        # 1本ずつ処理（ライブ版と同じ順序：決済→次の足でエントリー）
         for idx in range(len(self.df)):
             # 決済チェック（先に決済）
+            just_exited = False
             if self.current_position == 'long' and self.check_long_exit(idx):
                 self.exit_position(idx)
+                just_exited = True
             elif self.current_position == 'short' and self.check_short_exit(idx):
                 self.exit_position(idx)
-            
-            # エントリーチェック（決済後にエントリー）
-            if self.current_position is None:
+                just_exited = True
+
+            # エントリーチェック（決済した足ではエントリーしない）
+            if self.current_position is None and not just_exited:
                 if self.check_long_entry(idx):
                     self.enter_position(idx, 'long')
                 elif self.check_short_entry(idx):

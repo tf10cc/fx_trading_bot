@@ -241,7 +241,8 @@ def create_chart(df, trades, chart_height=600):
             wickUpColor: '{COLOR_LONG}', wickDownColor: '{COLOR_SHORT}',
             priceLineVisible: false,
         }});
-        candleSeries.setData({candle_json});
+        const candleData = {candle_json};
+        candleSeries.setData(candleData);
         const smaSeries = chart.addLineSeries({{ color: '#ff9800', lineWidth: 2, title: '{SMA_PERIOD}SMA', priceLineVisible: false }});
         smaSeries.setData({sma_json});
         candleSeries.setMarkers([]);
