@@ -8,6 +8,24 @@ GRANULARITY = "M5"  # 足の種類（M5 = 5分足）
 COUNT = 200         # 必要な取得本数（SMA75 + 傾き判定5本 + バッファ）
 
 
+def populate_indicators(df):
+    """平均足・75SMAを計算してdfに追加して返す"""
+    ha_close = (df['open'] + df['high'] + df['low'] + df['close']) / 4
+    ha_open = pd.Series(index=df.index, dtype=float)
+    ha_open.iloc[0] = (df['open'].iloc[0] + df['close'].iloc[0]) / 2
+    for i in range(1, len(df)):
+        ha_open.iloc[i] = (ha_open.iloc[i - 1] + ha_close.iloc[i - 1]) / 2
+    df['ha_open']        = ha_open
+    df['ha_close']       = ha_close
+    df['ha_high']        = pd.concat([df['high'], ha_open, ha_close], axis=1).max(axis=1)
+    df['ha_low']         = pd.concat([df['low'],  ha_open, ha_close], axis=1).min(axis=1)
+    df['ha_color']       = (df['ha_close'] >= df['ha_open']).map(lambda x: 1 if x else -1)
+    df['ha_body_top']    = df[['ha_open', 'ha_close']].max(axis=1)
+    df['ha_body_bottom'] = df[['ha_open', 'ha_close']].min(axis=1)
+    df['sma']            = df['close'].rolling(window=75).mean()
+    return df
+
+
 def check_long_entry(df, idx):
     """ロングエントリー条件"""
     if idx < 1:

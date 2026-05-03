@@ -4,7 +4,6 @@ FES — Fushimi EA System バックテストシステム（TradingView Lightweig
 
 import streamlit as st
 import pandas as pd
-import numpy as np
 import streamlit.components.v1 as components
 from pathlib import Path
 import json
@@ -116,40 +115,6 @@ class BacktestEngine:
         
         return df_converted
         
-    def calculate_sma(self, period=SMA_PERIOD):
-        """単純移動平均を計算"""
-        self.df['sma'] = self.df['close'].rolling(window=period).mean()
-        
-    def calculate_heikin_ashi(self):
-        """平均足を計算"""
-        # 平均足の終値
-        ha_close = (self.df['open'] + self.df['high'] + self.df['low'] + self.df['close']) / 4
-        
-        # 平均足の始値
-        ha_open = pd.Series(index=self.df.index, dtype=float)
-        ha_open.iloc[0] = (self.df['open'].iloc[0] + self.df['close'].iloc[0]) / 2
-        
-        for i in range(1, len(self.df)):
-            ha_open.iloc[i] = (ha_open.iloc[i-1] + ha_close.iloc[i-1]) / 2
-        
-        # 平均足の高値と安値
-        ha_high = pd.concat([self.df['high'], ha_open, ha_close], axis=1).max(axis=1)
-        ha_low = pd.concat([self.df['low'], ha_open, ha_close], axis=1).min(axis=1)
-        
-        self.df['ha_open'] = ha_open
-        self.df['ha_close'] = ha_close
-        self.df['ha_high'] = ha_high
-        self.df['ha_low'] = ha_low
-        
-    def calculate_ha_color(self):
-        """平均足の色を判定（青=1, 赤=-1）"""
-        self.df['ha_color'] = np.where(self.df['ha_close'] >= self.df['ha_open'], 1, -1)
-        
-    def calculate_ha_body(self):
-        """平均足の実体の上下を計算"""
-        self.df['ha_body_top'] = self.df[['ha_open', 'ha_close']].max(axis=1)
-        self.df['ha_body_bottom'] = self.df[['ha_open', 'ha_close']].min(axis=1)
-        
     def check_long_entry(self, idx):
         return self.logic_module.check_long_entry(self.df, idx)
 
@@ -212,10 +177,7 @@ class BacktestEngine:
     def run(self):
         """バックテスト実行"""
         self.load_data()
-        self.calculate_sma()
-        self.calculate_heikin_ashi()
-        self.calculate_ha_color()
-        self.calculate_ha_body()
+        self.df = self.logic_module.populate_indicators(self.df)
         
         # 1本ずつ処理（ライブ版と同じ順序：決済→次の足でエントリー）
         for idx in range(len(self.df)):
