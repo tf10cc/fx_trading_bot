@@ -93,17 +93,17 @@ class BacktestEngine:
 
         return df_converted
 
-    def check_long_entry(self, idx):
-        return self.logic_module.check_long_entry(self.df, idx)
+    def check_long_entry(self, df_slice):
+        return self.logic_module.check_long_entry(df_slice)
 
-    def check_short_entry(self, idx):
-        return self.logic_module.check_short_entry(self.df, idx)
+    def check_short_entry(self, df_slice):
+        return self.logic_module.check_short_entry(df_slice)
 
-    def check_long_exit(self, idx):
-        return self.logic_module.check_long_exit(self.df, idx)
+    def check_long_exit(self, df_slice):
+        return self.logic_module.check_long_exit(df_slice)
 
-    def check_short_exit(self, idx):
-        return self.logic_module.check_short_exit(self.df, idx)
+    def check_short_exit(self, df_slice):
+        return self.logic_module.check_short_exit(df_slice)
 
     def enter_position(self, idx, direction):
         """エントリー"""
@@ -159,20 +159,21 @@ class BacktestEngine:
 
         # 1本ずつ処理（ライブ版と同じ順序：決済→次の足でエントリー）
         for idx in range(len(self.df)):
+            df_slice = self.df.iloc[:idx + 1]
             # 決済チェック（先に決済）
             just_exited = False
-            if self.current_position == 'long' and self.check_long_exit(idx):
+            if self.current_position == 'long' and self.check_long_exit(df_slice):
                 self.exit_position(idx)
                 just_exited = True
-            elif self.current_position == 'short' and self.check_short_exit(idx):
+            elif self.current_position == 'short' and self.check_short_exit(df_slice):
                 self.exit_position(idx)
                 just_exited = True
 
             # エントリーチェック（決済した足ではエントリーしない）
             if self.current_position is None and not just_exited:
-                if self.check_long_entry(idx):
+                if self.check_long_entry(df_slice):
                     self.enter_position(idx, 'long')
-                elif self.check_short_entry(idx):
+                elif self.check_short_entry(df_slice):
                     self.enter_position(idx, 'short')
 
         # 未決済ポジションの強制決済

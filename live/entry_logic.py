@@ -40,13 +40,27 @@ def load_position():
     """ポジション状態をファイルから読み込む"""
     if POSITION_FILE.exists():
         with open(POSITION_FILE, 'r') as f:
-            return json.load(f).get('position')
+            state = json.load(f)
+        if isinstance(state, dict):
+            return state.get('position')
     return None
 
-def save_position(position):
-    """ポジション状態をファイルに保存する"""
+def load_state():
+    """ライブ判定の状態をファイルから読み込む"""
+    if POSITION_FILE.exists():
+        with open(POSITION_FILE, 'r') as f:
+            state = json.load(f)
+        if isinstance(state, dict):
+            state.setdefault('position', None)
+            state.setdefault('last_processed_candle', None)
+            return state
+    return {'position': None, 'last_processed_candle': None}
+
+
+def save_state(state):
+    """ライブ判定の状態をファイルに保存する"""
     with open(POSITION_FILE, 'w') as f:
-        json.dump({'position': position}, f)
+        json.dump(state, f, ensure_ascii=False, indent=2)
 
 
 # ---- ログ書き出し ----
@@ -149,6 +163,17 @@ def build_df(instrument, cassette):
         print('❌ データ取得失敗')
         return None
 
+    # Freqtradeと同じ考え方で、未完成足は戦略判定に使わない。
+    if 'complete' in df.columns:
+        incomplete_count = len(df) - int(df['complete'].sum())
+        if incomplete_count:
+            print(f'[DEBUG] 未完成足を除外: {incomplete_count} 本')
+        df = df[df['complete']].copy()
+
+    if len(df) < 2:
+        print('❌ 確定足が不足しています')
+        return None
+
     # 平均足計算
     ha_close = (df['open'] + df['high'] + df['low'] + df['close']) / 4
     ha_open  = pd.Series(index=df.index, dtype=float)
@@ -173,10 +198,12 @@ def build_df(instrument, cassette):
     candle_log = Path(__file__).parent / 'candle_log.csv'
     if candle_log.exists():
         existing = pd.read_csv(candle_log)
+        existing['time'] = pd.to_datetime(existing['time'], errors='coerce', utc=True)
         last_time = existing['time'].iloc[-1]
         new_rows = df[df['time'] > last_time]
         if not new_rows.empty:
-            new_rows.to_csv(candle_log, mode='a', header=False, index=False)
+            log_columns = [c for c in existing.columns if c in new_rows.columns]
+            new_rows[log_columns].to_csv(candle_log, mode='a', header=False, index=False)
     else:
         df.to_csv(candle_log, index=False)
 
@@ -185,69 +212,97 @@ def build_df(instrument, cassette):
 
 # ---- 1回の判定サイクル ----
 
-def run_once(df, cassette, position, instrument=DEFAULT_INSTRUMENT):
+def run_once(df, cassette, state, instrument=DEFAULT_INSTRUMENT):
     """
-    直前の確定足で条件を判定し、シグナルが出たら次の足でエントリーする。
-    Returns: 新しい position ('long' / 'short' / None)
+    最新の確定足で条件を判定し、シグナルが出たら現在足の始値付近で発注する。
+    Returns: 更新後の state
     """
-    idx = len(df) - 1  # 直前の確定足（例：07:20実行なら07:15の足）
+    candle_time = df['time'].iloc[-1].isoformat()
+    if state.get('last_processed_candle') == candle_time:
+        print(f'[DEBUG] 判定済みの確定足のためスキップ: {candle_time}')
+        return state
 
-    prev_color = df['ha_color'].iloc[idx - 1]
-    curr_color = df['ha_color'].iloc[idx]
-    sma_now = df['sma'].iloc[idx]
-    sma_5ago = df['sma'].iloc[idx - 5]
-    print(f'[DEBUG] 判定足={df["time"].iloc[idx]}')
+    position = state.get('position')
+
+    prev_color = df['ha_color'].iloc[-2]
+    curr_color = df['ha_color'].iloc[-1]
+    sma_now = df['sma'].iloc[-1]
+    sma_5ago = df['sma'].iloc[-6]
+    print(f'[DEBUG] 判定足={df["time"].iloc[-1]}')
     print(f'[DEBUG] prev_color={prev_color}, curr_color={curr_color}')
     print(f'[DEBUG] sma_now={sma_now:.4f}, sma_5ago={sma_5ago:.4f}')
-    print(f'[DEBUG] ha_body_bottom={df["ha_body_bottom"].iloc[idx]:.4f}')
-    print(f'[DEBUG] ha_body_top={df["ha_body_top"].iloc[idx]:.4f}')
+    print(f'[DEBUG] ha_body_bottom={df["ha_body_bottom"].iloc[-1]:.4f}')
+    print(f'[DEBUG] ha_body_top={df["ha_body_top"].iloc[-1]:.4f}')
 
-    if position is None:
-        if cassette.check_long_entry(df, idx):
-            print('✅ BUY シグナル → 注文送信')
-            price = send_order(instrument, DEFAULT_UNITS)
-            if price is not None:
-                log_trade('BUY', instrument, price)
-                return 'long'
-        elif cassette.check_short_entry(df, idx):
-            print('✅ SELL シグナル → 注文送信')
-            price = send_order(instrument, -DEFAULT_UNITS)
-            if price is not None:
-                log_trade('SELL', instrument, price)
-                return 'short'
-        else:
-            print('⏸️  待機（条件不成立）')
+    just_exited = False
+    action_failed = False
 
-    else:
-        if position == 'long' and cassette.check_long_exit(df, idx):
+    # バックテスト版と同じ順序：決済チェック → 同じ足では再エントリーしない → エントリー。
+    if position == 'long':
+        if cassette.check_long_exit(df):
             print('🔴 ロング決済 → 決済注文送信')
             price = close_position(instrument, 'long')
             if price is not None:
                 log_trade('EXIT_LONG', instrument, price)
-                return None
-        elif position == 'short' and cassette.check_short_exit(df, idx):
+                position = None
+                just_exited = True
+            else:
+                action_failed = True
+        else:
+            print('📊 ポジション保有中（long）')
+    elif position == 'short':
+        if cassette.check_short_exit(df):
             print('🔵 ショート決済 → 決済注文送信')
             price = close_position(instrument, 'short')
             if price is not None:
                 log_trade('EXIT_SHORT', instrument, price)
-                return None
+                position = None
+                just_exited = True
+            else:
+                action_failed = True
         else:
-            print(f'📊 ポジション保有中（{position}）')
+            print('📊 ポジション保有中（short）')
 
-    return position
+    if position is None and not just_exited:
+        if cassette.check_long_entry(df):
+            print('✅ BUY シグナル → 注文送信')
+            price = send_order(instrument, DEFAULT_UNITS)
+            if price is not None:
+                log_trade('BUY', instrument, price)
+                position = 'long'
+            else:
+                action_failed = True
+        elif cassette.check_short_entry(df):
+            print('✅ SELL シグナル → 注文送信')
+            price = send_order(instrument, -DEFAULT_UNITS)
+            if price is not None:
+                log_trade('SELL', instrument, price)
+                position = 'short'
+            else:
+                action_failed = True
+        else:
+            print('⏸️  待機（条件不成立）')
+    elif just_exited:
+        print('⏸️  決済した足では新規エントリーしません')
+
+    state['position'] = position
+    if not action_failed:
+        state['last_processed_candle'] = candle_time
+    return state
 
 
 # ---- メインループ（毎時0分に実行） ----
 
 def main_loop(cassette, instrument=DEFAULT_INSTRUMENT):
-    position = load_position()  # 起動時にポジションを読み込む
+    state = load_state()
 
     print(f'FES ライブトレード起動')
     print(f'カセット  : {getattr(cassette, "NAME", "不明")}')
     print(f'銘柄      : {instrument}')
     print(f'足の種類  : {getattr(cassette, "GRANULARITY", DEFAULT_GRANULARITY)}')
     print(f'取得本数  : {getattr(cassette, "COUNT", DEFAULT_COUNT)}')
-    print(f'ポジション: {position}')
+    print(f'ポジション: {state.get("position")}')
+    print(f'最終判定足: {state.get("last_processed_candle")}')
 
     granularity = getattr(cassette, 'GRANULARITY', DEFAULT_GRANULARITY)
     interval = 300 if granularity == 'M5' else 3600  # M5=5分, H1=1時間
@@ -259,8 +314,8 @@ def main_loop(cassette, instrument=DEFAULT_INSTRUMENT):
 
         df = build_df(instrument, cassette)
         if df is not None:
-            position = run_once(df, cassette, position, instrument)
-            save_position(position)
+            state = run_once(df, cassette, state, instrument)
+            save_state(state)
         else:
             print('データ取得エラー。次の足まで待機します')
 
@@ -289,8 +344,8 @@ if __name__ == '__main__':
         print('【テストモード】1回だけ実行して終了')
         df = build_df(DEFAULT_INSTRUMENT, cassette)
         if df is not None:
-            position = load_position()
-            new_position = run_once(df, cassette, position, DEFAULT_INSTRUMENT)
-            save_position(new_position)
+            state = load_state()
+            state = run_once(df, cassette, state, DEFAULT_INSTRUMENT)
+            save_state(state)
     else:
         main_loop(cassette)
