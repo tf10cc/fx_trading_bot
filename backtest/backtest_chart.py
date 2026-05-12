@@ -80,10 +80,12 @@ def create_lightweight_chart(df, trades, chart_height=600, jump_to=None, pip_uni
         cum_color  = COLOR_PROFIT if cum_pips >= 0 else COLOR_LOSS
         dir_color  = COLOR_LONG if trade['direction'] == 'long' else COLOR_SHORT
         dir_label  = 'Long' if trade['direction'] == 'long' else 'Short'
+        entry_jst = pd.Timestamp(trade['entry_time']).tz_convert('Asia/Tokyo').strftime('%Y-%m-%d %H:%M')
+        exit_jst  = pd.Timestamp(trade['exit_time']).tz_convert('Asia/Tokyo').strftime('%Y-%m-%d %H:%M')
         table_rows_html += f"""<tr data-entry-ts="{entry_ts}">
             <td>{i}</td>
-            <td>{trade['entry_time']}</td>
-            <td>{trade['exit_time']}</td>
+            <td>{entry_jst} JST</td>
+            <td>{exit_jst} JST</td>
             <td style="color:{dir_color}">{dir_label}</td>
             <td>{trade['entry_price']:.3f}</td>
             <td>{trade['exit_price']:.3f}</td>
@@ -187,13 +189,13 @@ def create_lightweight_chart(df, trades, chart_height=600, jump_to=None, pip_uni
                 }},
                 localization: {{
                     timeFormatter: (businessDayOrTimestamp) => {{
-                        const date = new Date(businessDayOrTimestamp * 1000);
+                        const date = new Date((businessDayOrTimestamp + 9 * 3600) * 1000);
                         const year = date.getUTCFullYear();
                         const month = String(date.getUTCMonth() + 1).padStart(2, '0');
                         const day = String(date.getUTCDate()).padStart(2, '0');
                         const hours = String(date.getUTCHours()).padStart(2, '0');
                         const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-                        return `${{year}}/${{month}}/${{day}} ${{hours}}:${{minutes}}`;
+                        return `${{year}}/${{month}}/${{day}} ${{hours}}:${{minutes}} JST`;
                     }}
                 }},
                 grid: {{
@@ -210,6 +212,16 @@ def create_lightweight_chart(df, trades, chart_height=600, jump_to=None, pip_uni
                     borderColor: '#2B2B43',
                     timeVisible: true,
                     secondsVisible: false,
+                    tickMarkFormatter: (time, tickMarkType, locale) => {{
+                        const jst = new Date((time + 9 * 3600) * 1000);
+                        const month = String(jst.getUTCMonth() + 1).padStart(2, '0');
+                        const day   = String(jst.getUTCDate()).padStart(2, '0');
+                        const hours = String(jst.getUTCHours()).padStart(2, '0');
+                        const mins  = String(jst.getUTCMinutes()).padStart(2, '0');
+                        if (tickMarkType <= 1) return `${{jst.getUTCFullYear()}}/${{month}}`;
+                        if (tickMarkType === 2) return `${{month}}/${{day}}`;
+                        return `${{hours}}:${{mins}}`;
+                    }},
                     localization: {{
                         locale: 'en-US',
                         dateFormat: 'yyyy/MM/dd',
