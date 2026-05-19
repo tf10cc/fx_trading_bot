@@ -4,7 +4,7 @@ import pandas as pd
 class BacktestEngine:
     """バックテストエンジン"""
 
-    def __init__(self, csv_path, logic_module, spread_pips=0, slippage_pips=0, pip_multiplier=100, pip_unit="pips"):
+    def __init__(self, csv_path, logic_module, spread_pips=0, slippage_pips=0, pip_multiplier=100, pip_unit="pips", start_date=None, end_date=None):
         """
         初期化
 
@@ -21,6 +21,8 @@ class BacktestEngine:
         self.pip_multiplier = pip_multiplier
         self.pip_unit = pip_unit
         self.logic_module = logic_module
+        self.start_date = pd.Timestamp(start_date) if start_date is not None else None
+        self.end_date = pd.Timestamp(end_date) + pd.Timedelta(days=1) if end_date is not None else None
 
         # データ
         self.df = None
@@ -53,10 +55,24 @@ class BacktestEngine:
             # 既存ドル円形式
             self.df = self._convert_standard_format()
         elif 'time' in self.df.columns:
-            # 標準形式（そのまま使用）
-            self.df['time'] = pd.to_datetime(self.df['time'], dayfirst=True)
+            # 標準形式（ISO8601・日付先頭など任意のフォーマットを自動判定）
+            self.df['time'] = pd.to_datetime(self.df['time'], format='mixed', utc=True).dt.tz_localize(None)
         else:
             raise ValueError("不明なCSVフォーマットです")
+
+        # タイムゾーン情報をtz-naive UTCに統一（どの形式でも同じ状態にする）
+        if self.df['time'].dt.tz is not None:
+            self.df['time'] = self.df['time'].dt.tz_localize(None)
+
+        # 期間フィルタリング
+        if self.start_date is not None:
+            self.df = self.df[self.df['time'] >= self.start_date]
+        if self.end_date is not None:
+            self.df = self.df[self.df['time'] < self.end_date]
+        self.df = self.df.reset_index(drop=True)
+
+        if len(self.df) == 0:
+            raise ValueError("指定した期間にデータがありません。CSVの期間を確認してください。")
 
     def _convert_forex_tester_format(self):
         """Forex Tester形式を標準フォーマットに変換"""
@@ -157,17 +173,31 @@ class BacktestEngine:
         self.load_data()
         self.df = self.logic_module.populate_indicators(self.df)
 
-        # 1本ずつ処理（ライブ版と同じ順序：決済→次の足でエントリー）
+        stop_pips = getattr(self.logic_module, 'STOP_LOSS_PIPS', 0)
+
+        # 1本ずつ処理（ライブ版と同じ順序：損切り→決済→次の足でエントリー）
         for idx in range(len(self.df)):
             df_slice = self.df.iloc[:idx + 1]
-            # 決済チェック（先に決済）
             just_exited = False
-            if self.current_position == 'long' and self.check_long_exit(df_slice):
-                self.exit_position(idx)
-                just_exited = True
-            elif self.current_position == 'short' and self.check_short_exit(df_slice):
-                self.exit_position(idx)
-                just_exited = True
+
+            # 損切りチェック（Freqtrade方式：安値/高値で判定、次の足始値で決済）
+            if stop_pips > 0 and self.current_position is not None:
+                stop_distance = stop_pips / self.pip_multiplier
+                if self.current_position == 'long' and self.df['low'].iloc[idx] < self.entry_price - stop_distance:
+                    self.exit_position(idx)
+                    just_exited = True
+                elif self.current_position == 'short' and self.df['high'].iloc[idx] > self.entry_price + stop_distance:
+                    self.exit_position(idx)
+                    just_exited = True
+
+            # 決済チェック（損切りしていない場合のみ）
+            if not just_exited:
+                if self.current_position == 'long' and self.check_long_exit(df_slice):
+                    self.exit_position(idx)
+                    just_exited = True
+                elif self.current_position == 'short' and self.check_short_exit(df_slice):
+                    self.exit_position(idx)
+                    just_exited = True
 
             # エントリーチェック（決済した足ではエントリーしない）
             if self.current_position is None and not just_exited:

@@ -34,6 +34,10 @@ if data_dir.exists():
     if csv_names:
         selected_file = st.sidebar.selectbox("CSVファイルを選択", csv_names)
         csv_path = data_dir / selected_file
+
+        # 期間指定
+        start_date = st.sidebar.date_input("開始日", value=None, key="start_date")
+        end_date = st.sidebar.date_input("終了日", value=None, key="end_date")
     else:
         st.error("dataフォルダにCSVファイルが見つかりません")
         st.stop()
@@ -90,13 +94,17 @@ pip_multiplier, pip_unit = pip_type_options[selected_pip_type]
 # バックテスト実行ボタン
 if st.sidebar.button("バックテスト実行", type="primary"):
     with st.spinner("バックテスト実行中..."):
-        bt = BacktestEngine(str(csv_path), logic_module=selected_logic, pip_multiplier=pip_multiplier, pip_unit=pip_unit)
-        bt.run()
-        metrics = bt.calculate_metrics()
+        try:
+            bt = BacktestEngine(str(csv_path), logic_module=selected_logic, pip_multiplier=pip_multiplier, pip_unit=pip_unit,
+                                start_date=start_date, end_date=end_date)
+            bt.run()
+            metrics = bt.calculate_metrics()
 
-        # 結果を session_state に保存
-        st.session_state['bt'] = bt
-        st.session_state['metrics'] = metrics
+            # 結果を session_state に保存
+            st.session_state['bt'] = bt
+            st.session_state['metrics'] = metrics
+        except ValueError as e:
+            st.error(str(e))
 
 # 日時ジャンプ設定
 chart_height = 600
