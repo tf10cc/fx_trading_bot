@@ -11,15 +11,9 @@ import importlib.util
 from backtest_engine import BacktestEngine
 from backtest_chart import create_lightweight_chart, SMA_PERIOD
 
-# ========== 定数定義 ==========
-STRATEGY_NAME = "R氏 平均足75SMA手法"
-
 # ========== Streamlitアプリ ==========
 
-st.set_page_config(page_title=STRATEGY_NAME, layout="wide")
-
-st.title(f"📊 {STRATEGY_NAME} バックテスト結果")
-st.caption("Powered by TradingView Lightweight Charts")
+st.set_page_config(page_title="FES バックテスト", layout="wide")
 
 # サイドバー
 st.sidebar.header("設定")
@@ -68,6 +62,11 @@ selected_logic_key = st.sidebar.selectbox(
     format_func=lambda k: logic_display_names[k]
 )
 selected_logic = logic_modules[selected_logic_key]
+
+# タイトル
+st.subheader("バックテスト結果")
+st.markdown(f"<p style='font-size:18px'><b>データ</b>: {selected_file}　　<b>ロジック</b>: {logic_display_names[selected_logic_key]}</p>", unsafe_allow_html=True)
+st.caption("Powered by TradingView Lightweight Charts")
 
 # pip換算タイプ選択
 pip_type_options = {
@@ -151,11 +150,13 @@ if 'bt' in st.session_state and 'metrics' in st.session_state:
         st.metric("PF", f"{metrics['profit_factor']:.2f}")
 
     # Lightweight Chartsチャート
-    st.subheader(f"📈 チャート（平均足 + {SMA_PERIOD}SMA）")
+    chart_title = getattr(selected_logic, 'CHART_TITLE', f"平均足 + {SMA_PERIOD}SMA")
+    st.subheader(f"📈 チャート（{chart_title}）")
 
     jump_to = st.session_state.get('jump_to', None)
 
-    html_code = create_lightweight_chart(bt.df, bt.trades, chart_height, jump_to, bt.pip_unit)
+    plot_config = getattr(selected_logic, 'plot_config', None)
+    html_code = create_lightweight_chart(bt.df, bt.trades, chart_height, jump_to, bt.pip_unit, plot_config)
     components.html(html_code, height=chart_height + 420, scrolling=True)
 else:
     st.info("👈 サイドバーから「バックテスト実行」ボタンを押してください")

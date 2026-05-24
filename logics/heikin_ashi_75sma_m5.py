@@ -3,7 +3,7 @@ R氏 平均足75SMA手法（M5版 ツール動作確認用）
 """
 import pandas as pd
 
-NAME = "R氏 平均足75SMA M5 ②色継続もエントリー"
+NAME = "平均足75SMA M5（色継続もエントリー）"
 GRANULARITY = "M5"  # 足の種類（M5 = 5分足）
 COUNT = 200         # 必要な取得本数（SMA75 + 傾き判定5本 + バッファ）
 

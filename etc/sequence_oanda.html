@@ -6,8 +6,8 @@
 </head>
 <body style="background:#111; display:flex; justify-content:center; padding:30px; margin:0">
 
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 820" width="1100" style="font-family:sans-serif">
-  <rect width="760" height="820" fill="#1a1a2e"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 1020" width="1100" style="font-family:sans-serif">
+  <rect width="760" height="1020" fill="#1a1a2e"/>
 
   <!-- タイトル -->
   <text x="380" y="32" fill="#ccc" font-size="16" text-anchor="middle" font-weight="bold">FES ↔ OANDA API　シーケンス図（エントリー〜決済）</text>
@@ -22,94 +22,94 @@
   <text x="630" y="85"  fill="#aaa"    font-size="10" text-anchor="middle">api-fxpractice.oanda.com</text>
 
   <!-- ライフライン -->
-  <line x1="130" y1="94"  x2="130" y2="810" stroke="#2196f3" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.4"/>
-  <line x1="630" y1="94"  x2="630" y2="810" stroke="#ff9800" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.4"/>
+  <line x1="130" y1="94"  x2="130" y2="1010" stroke="#2196f3" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.4"/>
+  <line x1="630" y1="94"  x2="630" y2="1010" stroke="#ff9800" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.4"/>
 
-  <!-- ======== ① 毎時0分：起動 ======== -->
+  <!-- ======== ① タイマー発火 ======== -->
   <rect x="40" y="115" width="180" height="30" rx="4" fill="#1b3a1b"/>
-  <text x="130" y="135" fill="#a5d6a7" font-size="11" text-anchor="middle">⏰ 毎時0分　タイマー発火</text>
+  <text x="130" y="135" fill="#a5d6a7" font-size="11" text-anchor="middle">⏰ 毎時0分（M5は毎5分）タイマー発火</text>
 
   <!-- ======== ② データ取得リクエスト ======== -->
-  <line x1="130" y1="165" x2="610" y2="165" stroke="#90caf9" stroke-width="2"/>
-  <polygon points="610,165 598,160 598,170" fill="#90caf9"/>
-  <text x="370" y="158" fill="#90caf9" font-size="11" text-anchor="middle">「XAU_USD の直近200本 H1 足データをくれ」</text>
+  <line x1="130" y1="168" x2="610" y2="168" stroke="#90caf9" stroke-width="2"/>
+  <polygon points="610,168 598,163 598,173" fill="#90caf9"/>
+  <text x="370" y="161" fill="#90caf9" font-size="11" text-anchor="middle">「USD_JPY の直近200本 ローソク足データをくれ」</text>
+  <text x="130" y="185" fill="#888" font-size="9" text-anchor="middle">heikin_ashi.py の fetch_candles()</text>
 
   <!-- ======== ③ データ返却 ======== -->
-  <line x1="150" y1="195" x2="630" y2="195" stroke="#ffb74d" stroke-width="2"/>
-  <polygon points="150,195 162,190 162,200" fill="#ffb74d"/>
-  <text x="370" y="188" fill="#ffb74d" font-size="11" text-anchor="middle">200本のローソク足データ（time / open / high / low / close）</text>
+  <line x1="150" y1="205" x2="630" y2="205" stroke="#ffb74d" stroke-width="2"/>
+  <polygon points="150,205 162,200 162,210" fill="#ffb74d"/>
+  <text x="370" y="198" fill="#ffb74d" font-size="11" text-anchor="middle">200本のローソク足データ（time / open / high / low / close）</text>
 
-  <!-- ======== ④ FES内部処理 ======== -->
-  <rect x="40" y="215" width="180" height="50" rx="4" fill="#1a2a3a" stroke="#555" stroke-width="1"/>
-  <text x="130" y="234" fill="#eee"    font-size="11" text-anchor="middle">【内部処理】</text>
-  <text x="130" y="250" fill="#90caf9" font-size="10" text-anchor="middle">heikin_ashi.py で平均足を計算</text>
-  <text x="130" y="264" fill="#aaa"    font-size="10" text-anchor="middle">75SMA・傾きも計算</text>
+  <!-- ======== ④ 平均足・SMA計算 ======== -->
+  <rect x="40" y="222" width="180" height="56" rx="4" fill="#1a2a3a" stroke="#555" stroke-width="1"/>
+  <text x="130" y="240" fill="#eee"    font-size="11" text-anchor="middle">【build_df() 内部処理】</text>
+  <text x="130" y="256" fill="#90caf9" font-size="10" text-anchor="middle">entry_logic.py で平均足を計算</text>
+  <text x="130" y="270" fill="#aaa"    font-size="10" text-anchor="middle">75SMA・傾きも計算</text>
+  <text x="130" y="284" fill="#666"    font-size="9"  text-anchor="middle">→ candle_log.csv に保存</text>
 
-  <!-- ======== ⑤ シグナル判定 ======== -->
-  <rect x="40" y="280" width="180" height="40" rx="4" fill="#1a2a3a" stroke="#555" stroke-width="1"/>
-  <text x="130" y="298" fill="#eee"    font-size="11" text-anchor="middle">【シグナル判定】</text>
-  <text x="130" y="313" fill="#aaa"    font-size="10" text-anchor="middle">BUY / SELL / WAIT を決定</text>
+  <!-- ======== ⑤ ポジション読み込み ======== -->
+  <rect x="40" y="295" width="180" height="30" rx="4" fill="#2a2a1a" stroke="#555" stroke-width="1"/>
+  <text x="130" y="312" fill="#fff3a0" font-size="10" text-anchor="middle">position_state.json からポジション読み込み</text>
 
-  <!-- ======== ⑥ WAIT の場合 ======== -->
-  <text x="130" y="345" fill="#777" font-size="11" text-anchor="middle">▼ WAIT の場合</text>
-  <rect x="40" y="352" width="180" height="26" rx="4" fill="#222"/>
-  <text x="130" y="369" fill="#666" font-size="11" text-anchor="middle">何もしない。次の時間まで待機</text>
+  <!-- ======== ⑥ カセットでシグナル判定 ======== -->
+  <rect x="40" y="342" width="180" height="40" rx="4" fill="#1a2a3a" stroke="#9c27b0" stroke-width="1"/>
+  <text x="130" y="360" fill="#eee"    font-size="11" text-anchor="middle">【run_once() シグナル判定】</text>
+  <text x="130" y="375" fill="#ce93d8" font-size="10" text-anchor="middle">カセット(logics/) の条件で判定</text>
 
-  <!-- 区切り線 -->
-  <line x1="40" y1="395" x2="720" y2="395" stroke="#333" stroke-width="1" stroke-dasharray="4,4"/>
-  <text x="380" y="410" fill="#777" font-size="11" text-anchor="middle">▼ BUY / SELL の場合</text>
-
-  <!-- ======== ⑦ 注文リクエスト ======== -->
-  <line x1="130" y1="430" x2="610" y2="430" stroke="#90caf9" stroke-width="2"/>
-  <polygon points="610,430 598,425 598,435" fill="#90caf9"/>
-  <text x="370" y="423" fill="#90caf9" font-size="11" text-anchor="middle">「XAU_USD を ○ユニット 買え（または売れ）」</text>
-
-  <!-- ======== ⑧ 約定レスポンス ======== -->
-  <line x1="150" y1="460" x2="630" y2="460" stroke="#ffb74d" stroke-width="2"/>
-  <polygon points="150,460 162,455 162,465" fill="#ffb74d"/>
-  <text x="370" y="453" fill="#ffb74d" font-size="11" text-anchor="middle">「注文受付。約定価格 ○○」</text>
-
-  <!-- ======== ⑨ ポジション保有中 ======== -->
-  <rect x="40" y="478" width="180" height="26" rx="4" fill="#1b3a1b"/>
-  <text x="130" y="495" fill="#a5d6a7" font-size="11" text-anchor="middle">ポジション保有中（次の時間へ）</text>
+  <!-- ======== ⑦ WAIT の場合 ======== -->
+  <text x="130" y="405" fill="#777" font-size="11" text-anchor="middle">▼ 条件不成立（WAIT）の場合</text>
+  <rect x="40" y="412" width="180" height="26" rx="4" fill="#222"/>
+  <text x="130" y="429" fill="#666" font-size="11" text-anchor="middle">何もしない。次の足まで待機</text>
 
   <!-- 区切り線 -->
-  <line x1="40" y1="520" x2="720" y2="520" stroke="#333" stroke-width="1" stroke-dasharray="4,4"/>
-  <text x="380" y="535" fill="#777" font-size="11" text-anchor="middle">▼ 次の時間足で平均足が逆転 → 決済へ</text>
+  <line x1="40" y1="456" x2="720" y2="456" stroke="#333" stroke-width="1" stroke-dasharray="4,4"/>
+  <text x="380" y="471" fill="#777" font-size="11" text-anchor="middle">▼ BUY / SELL の場合</text>
 
-  <!-- ======== ⑩ ポジション照会 ======== -->
-  <line x1="130" y1="555" x2="610" y2="555" stroke="#90caf9" stroke-width="2"/>
-  <polygon points="610,555 598,550 598,560" fill="#90caf9"/>
-  <text x="370" y="548" fill="#90caf9" font-size="11" text-anchor="middle">「現在のポジションを教えてくれ」</text>
+  <!-- ======== ⑧ 注文リクエスト ======== -->
+  <line x1="130" y1="490" x2="610" y2="490" stroke="#90caf9" stroke-width="2"/>
+  <polygon points="610,490 598,485 598,495" fill="#90caf9"/>
+  <text x="370" y="483" fill="#90caf9" font-size="11" text-anchor="middle">「USD_JPY を ○ユニット 買え（または売れ）」</text>
+  <text x="130" y="507" fill="#888" font-size="9" text-anchor="middle">send_order()</text>
 
-  <!-- ======== ⑪ ポジション返却 ======== -->
-  <line x1="150" y1="585" x2="630" y2="585" stroke="#ffb74d" stroke-width="2"/>
-  <polygon points="150,585 162,580 162,590" fill="#ffb74d"/>
-  <text x="370" y="578" fill="#ffb74d" font-size="11" text-anchor="middle">「XAU_USD ロング ○ユニット 保有中」</text>
+  <!-- ======== ⑨ 約定レスポンス ======== -->
+  <line x1="150" y1="525" x2="630" y2="525" stroke="#ffb74d" stroke-width="2"/>
+  <polygon points="150,525 162,520 162,530" fill="#ffb74d"/>
+  <text x="370" y="518" fill="#ffb74d" font-size="11" text-anchor="middle">「注文受付。約定価格 ○○」</text>
 
-  <!-- ======== ⑫ 決済注文 ======== -->
-  <line x1="130" y1="615" x2="610" y2="615" stroke="#90caf9" stroke-width="2"/>
-  <polygon points="610,615 598,610 598,620" fill="#90caf9"/>
-  <text x="370" y="608" fill="#90caf9" font-size="11" text-anchor="middle">「ポジションを全決済せよ」</text>
+  <!-- ======== ⑩ ポジション保存 ======== -->
+  <rect x="40" y="540" width="180" height="40" rx="4" fill="#1b3a1b"/>
+  <text x="130" y="557" fill="#a5d6a7" font-size="10" text-anchor="middle">trade_log.csv に記録</text>
+  <text x="130" y="572" fill="#a5d6a7" font-size="10" text-anchor="middle">position_state.json に 'long'/'short' 保存</text>
 
-  <!-- ======== ⑬ 決済完了 ======== -->
-  <line x1="150" y1="645" x2="630" y2="645" stroke="#ffb74d" stroke-width="2"/>
-  <polygon points="150,645 162,640 162,650" fill="#ffb74d"/>
-  <text x="370" y="638" fill="#ffb74d" font-size="11" text-anchor="middle">「決済完了。確定損益 ○○ドル」</text>
+  <!-- 区切り線 -->
+  <line x1="40" y1="600" x2="720" y2="600" stroke="#333" stroke-width="1" stroke-dasharray="4,4"/>
+  <text x="380" y="615" fill="#777" font-size="11" text-anchor="middle">▼ 次の足でカセットが決済条件を満たした場合</text>
 
-  <!-- ======== ⑭ 完了 ======== -->
-  <rect x="40" y="663" width="180" height="26" rx="4" fill="#3a1a1a"/>
-  <text x="130" y="680" fill="#ef9a9a" font-size="11" text-anchor="middle">トレード終了。次の機会を待つ</text>
+  <!-- ======== ⑪ 決済注文 ======== -->
+  <line x1="130" y1="635" x2="610" y2="635" stroke="#90caf9" stroke-width="2"/>
+  <polygon points="610,635 598,630 598,640" fill="#90caf9"/>
+  <text x="370" y="628" fill="#90caf9" font-size="11" text-anchor="middle">「ポジションを全決済せよ」</text>
+  <text x="130" y="652" fill="#888" font-size="9" text-anchor="middle">close_position()</text>
+
+  <!-- ======== ⑫ 決済完了 ======== -->
+  <line x1="150" y1="670" x2="630" y2="670" stroke="#ffb74d" stroke-width="2"/>
+  <polygon points="150,670 162,665 162,675" fill="#ffb74d"/>
+  <text x="370" y="663" fill="#ffb74d" font-size="11" text-anchor="middle">「決済完了。約定価格 ○○」</text>
+
+  <!-- ======== ⑬ 完了 ======== -->
+  <rect x="40" y="685" width="180" height="40" rx="4" fill="#3a1a1a"/>
+  <text x="130" y="702" fill="#ef9a9a" font-size="10" text-anchor="middle">trade_log.csv に記録</text>
+  <text x="130" y="717" fill="#ef9a9a" font-size="10" text-anchor="middle">position_state.json に None 保存</text>
 
   <!-- 凡例 -->
-  <rect x="40" y="715" width="680" height="80" rx="6" fill="none" stroke="#333" stroke-width="1"/>
-  <text x="60" y="735" fill="#777" font-size="11">凡例：</text>
-  <line x1="100" y1="750" x2="160" y2="750" stroke="#90caf9" stroke-width="2"/>
-  <polygon points="160,750 148,745 148,755" fill="#90caf9"/>
-  <text x="170" y="754" fill="#90caf9" font-size="11">FES → OANDA へのリクエスト</text>
-  <line x1="100" y1="775" x2="160" y2="775" stroke="#ffb74d" stroke-width="2"/>
-  <polygon points="100,775 112,770 112,780" fill="#ffb74d"/>
-  <text x="170" y="779" fill="#ffb74d" font-size="11">OANDA → FES へのレスポンス</text>
+  <rect x="40" y="755" width="680" height="80" rx="6" fill="none" stroke="#333" stroke-width="1"/>
+  <text x="60" y="775" fill="#777" font-size="11">凡例：</text>
+  <line x1="100" y1="790" x2="160" y2="790" stroke="#90caf9" stroke-width="2"/>
+  <polygon points="160,790 148,785 148,795" fill="#90caf9"/>
+  <text x="170" y="794" fill="#90caf9" font-size="11">FES → OANDA へのリクエスト</text>
+  <line x1="100" y1="815" x2="160" y2="815" stroke="#ffb74d" stroke-width="2"/>
+  <polygon points="100,815 112,810 112,820" fill="#ffb74d"/>
+  <text x="170" y="819" fill="#ffb74d" font-size="11">OANDA → FES へのレスポンス</text>
 
 </svg>
 

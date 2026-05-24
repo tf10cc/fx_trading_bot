@@ -194,6 +194,10 @@ def build_df(instrument, cassette):
 
     df = df.reset_index(drop=True)
 
+    # カセット固有の指標を計算（bb_midなど）
+    if hasattr(cassette, 'populate_indicators'):
+        df = cassette.populate_indicators(df)
+
     # candle_log.csv に保存（初回は全件、以降は新しい足だけ追記）
     candle_log = Path(__file__).parent / 'candle_log.csv'
     if candle_log.exists():

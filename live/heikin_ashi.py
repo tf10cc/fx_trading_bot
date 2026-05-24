@@ -34,7 +34,7 @@ def fetch_candles(
     OANDA Practiceからローソク足を取得して DataFrame で返す。
 
     Returns:
-        columns: time, open, high, low, close
+        columns: time, open, high, low, close, complete
     """
     cfg = config or _load_oanda_config()
     if cfg is None:
@@ -66,6 +66,7 @@ def fetch_candles(
                 "high": float(mid["h"]),
                 "low": float(mid["l"]),
                 "close": float(mid["c"]),
+                "complete": bool(c.get("complete")),
             }
         )
 

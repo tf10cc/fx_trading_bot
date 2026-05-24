@@ -1,13 +1,14 @@
 """
-OANDAからUSD/JPY H1データを取得して保存するスクリプト
+OANDAからUSD/JPY データを取得して保存するスクリプト
 
 使い方:
-  python download_oanda_data.py          # 検証用：7・8・9月だけ取得（月別）
-  python download_oanda_data.py --all    # 2024年1〜12月を全部取得（月別）
-  python download_oanda_data.py --year   # 2024年を1ファイルにまとめて取得
+  python download_oanda_data.py          # 検証用：7・8・9月だけ取得（月別・H1）
+  python download_oanda_data.py --all    # 2024年1〜12月を全部取得（月別・H1）
+  python download_oanda_data.py --year   # 2024年を1ファイルにまとめて取得（H1）
+  python download_oanda_data.py --m5     # 2024年を1ファイルにまとめて取得（M5）
 
-保存先（月別）: data/USD-JPY_H1_2024-07_OANDA.csv
-保存先（年別）: data/USDJPY_H1_2024_OANDA.csv
+保存先（H1年別）: data/USDJPY_H1_2024_OANDA.csv
+保存先（M5年別）: data/USDJPY_M5_2024_OANDA.csv
 """
 
 import os
@@ -22,10 +23,14 @@ import pandas as pd
 load_dotenv()
 
 INSTRUMENT   = "USD_JPY"
-GRANULARITY  = "H1"
 BASE_URL     = "https://api-fxpractice.oanda.com"
 DATA_DIR     = Path(__file__).parent / "data"
 MAX_COUNT    = 5000  # OANDAのAPI上限
+
+# --m5 フラグで切り替え
+USE_M5      = "--m5" in sys.argv
+GRANULARITY = "M5" if USE_M5 else "H1"
+STEP        = timedelta(minutes=5) if USE_M5 else timedelta(hours=1)
 
 
 def _fetch_chunk(headers: dict, from_dt: datetime) -> list:
@@ -82,8 +87,8 @@ def fetch_range(from_dt: datetime, to_dt: datetime) -> pd.DataFrame:
 
         # 最後のロウソク足の次の時刻から再開
         last_time = datetime.strptime(candles[-1]["time"][:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
-        current_from = last_time + timedelta(hours=1)
-        print(f"  ページング: {current_from.strftime('%Y-%m-%d')} から続きを取得...", flush=True)
+        current_from = last_time + STEP
+        print(f"  ページング: {current_from.strftime('%Y-%m-%d %H:%M')} から続きを取得...", flush=True)
 
     return pd.DataFrame(all_rows)
 
@@ -105,11 +110,12 @@ def download_month(year: int, month: int):
 
 
 def download_year(year: int):
-    print(f"{year}年を1ファイルで取得中...", flush=True)
+    label = GRANULARITY
+    print(f"{year}年（{label}）を1ファイルで取得中...", flush=True)
     from_dt = datetime(year, 1, 1, tzinfo=timezone.utc)
     to_dt   = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
     df = fetch_range(from_dt, to_dt)
-    filename = f"USDJPY_H1_{year}_OANDA.csv"
+    filename = f"USDJPY_{label}_{year}_OANDA.csv"
     DATA_DIR.mkdir(exist_ok=True)
     df.to_csv(DATA_DIR / filename, index=False)
     print(f"合計 {len(df)}本 → {filename}")
@@ -117,7 +123,7 @@ def download_year(year: int):
 
 
 if __name__ == "__main__":
-    if "--year" in sys.argv:
+    if "--m5" in sys.argv or "--year" in sys.argv:
         download_year(2024)
     elif "--all" in sys.argv:
         for m in range(1, 13):

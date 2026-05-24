@@ -3,7 +3,7 @@ R氏 平均足75SMA手法（M5版 色変化のみエントリー）
 """
 import pandas as pd
 
-NAME = "R氏 平均足75SMA M5 ①色変化のみ（赤→青・青→赤）"
+NAME = "平均足75SMA M5（色変化のみ）"
 GRANULARITY = "M5"
 COUNT = 200
 

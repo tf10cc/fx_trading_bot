@@ -12,35 +12,42 @@ COLOR_ENTRY_MARKER = '#2196F3'
 COLOR_CLICK_LINE   = '#ffff00'
 
 
-def create_lightweight_chart(df, trades, chart_height=600, jump_to=None, pip_unit='pips'):
+def create_lightweight_chart(df, trades, chart_height=600, jump_to=None, pip_unit='pips', plot_config=None):
     """TradingView Lightweight Chartsを生成"""
 
-    # 平均足データを準備（UNIXタイムスタンプに変換）
+    # ローソク足データを準備（ha_openがあれば平均足、なければ通常ローソク足）
+    use_ha = 'ha_open' in df.columns
+    o_col = 'ha_open'  if use_ha else 'open'
+    h_col = 'ha_high'  if use_ha else 'high'
+    l_col = 'ha_low'   if use_ha else 'low'
+    c_col = 'ha_close' if use_ha else 'close'
+
     candlestick_data = []
     for idx, row in df.iterrows():
-        if pd.notna(row['ha_open']) and pd.notna(row['ha_high']) and pd.notna(row['ha_low']) and pd.notna(row['ha_close']):
+        if pd.notna(row[o_col]) and pd.notna(row[h_col]) and pd.notna(row[l_col]) and pd.notna(row[c_col]):
             try:
                 candlestick_data.append({
-                    'time': calendar.timegm(row['time'].timetuple()),
-                    'open': round(float(row['ha_open']), 5),
-                    'high': round(float(row['ha_high']), 5),
-                    'low': round(float(row['ha_low']), 5),
-                    'close': round(float(row['ha_close']), 5)
+                    'time':  calendar.timegm(row['time'].timetuple()),
+                    'open':  round(float(row[o_col]), 5),
+                    'high':  round(float(row[h_col]), 5),
+                    'low':   round(float(row[l_col]), 5),
+                    'close': round(float(row[c_col]), 5)
                 })
             except:
                 continue
 
-    # 75SMAデータを準備
+    # SMAデータを準備（sma列がなければ非表示）
     sma_data = []
-    for idx, row in df.iterrows():
-        if pd.notna(row['sma']):
-            try:
-                sma_data.append({
-                    'time': calendar.timegm(row['time'].timetuple()),
-                    'value': round(float(row['sma']), 5)
-                })
-            except:
-                continue
+    if 'sma' in df.columns:
+        for idx, row in df.iterrows():
+            if pd.notna(row['sma']):
+                try:
+                    sma_data.append({
+                        'time':  calendar.timegm(row['time'].timetuple()),
+                        'value': round(float(row['sma']), 5)
+                    })
+                except:
+                    continue
 
     # マーカーデータを準備（シンプルに記号のみ）
     markers = []
@@ -80,8 +87,8 @@ def create_lightweight_chart(df, trades, chart_height=600, jump_to=None, pip_uni
         cum_color  = COLOR_PROFIT if cum_pips >= 0 else COLOR_LOSS
         dir_color  = COLOR_LONG if trade['direction'] == 'long' else COLOR_SHORT
         dir_label  = 'Long' if trade['direction'] == 'long' else 'Short'
-        entry_jst = pd.Timestamp(trade['entry_time']).tz_convert('Asia/Tokyo').strftime('%Y-%m-%d %H:%M')
-        exit_jst  = pd.Timestamp(trade['exit_time']).tz_convert('Asia/Tokyo').strftime('%Y-%m-%d %H:%M')
+        entry_jst = pd.Timestamp(trade['entry_time']).tz_localize('UTC').tz_convert('Asia/Tokyo').strftime('%Y-%m-%d %H:%M')
+        exit_jst  = pd.Timestamp(trade['exit_time']).tz_localize('UTC').tz_convert('Asia/Tokyo').strftime('%Y-%m-%d %H:%M')
         table_rows_html += f"""<tr data-entry-ts="{entry_ts}">
             <td>{i}</td>
             <td>{entry_jst} JST</td>
@@ -112,11 +119,34 @@ def create_lightweight_chart(df, trades, chart_height=600, jump_to=None, pip_uni
             'exit_high':   exit_high,
         })
 
+    # plot_config から追加ラインデータを構築
+    extra_lines = []
+    if plot_config and "main_plot" in plot_config:
+        for col, opts in plot_config["main_plot"].items():
+            if col in df.columns:
+                data = []
+                for idx, row in df.iterrows():
+                    if pd.notna(row[col]):
+                        try:
+                            data.append({
+                                'time': calendar.timegm(row['time'].timetuple()),
+                                'value': round(float(row[col]), 5)
+                            })
+                        except:
+                            continue
+                extra_lines.append({
+                    'data':      data,
+                    'color':     opts.get('color', '#888888'),
+                    'lineWidth': opts.get('lineWidth', 1),
+                    'title':     opts.get('title', col),
+                })
+
     # JSONに変換
-    candlestick_json = json.dumps(candlestick_data)
-    sma_json         = json.dumps(sma_data)
-    trades_js_json   = json.dumps(trades_for_js)
-    markers_json     = json.dumps(markers)
+    candlestick_json  = json.dumps(candlestick_data)
+    sma_json          = json.dumps(sma_data)
+    trades_js_json    = json.dumps(trades_for_js)
+    markers_json      = json.dumps(markers)
+    extra_lines_json  = json.dumps(extra_lines)
 
     # HTMLコード生成
     html_code = f"""
@@ -156,10 +186,19 @@ def create_lightweight_chart(df, trades, chart_height=600, jump_to=None, pip_uni
             }}
             #trade-table tbody tr:hover {{ background-color: #2a3a4a; cursor: pointer; }}
             #trade-table tbody tr.highlighted {{ background-color: #1a4a7a !important; }}
+            #nav-bar {{ display:flex; align-items:center; gap:8px; padding:6px 0; background:#1e1e1e; }}
+            .nav-btn {{ background:#2B2B43; color:#d1d4dc; border:1px solid #363C4E; padding:6px 14px; cursor:pointer; border-radius:4px; font-size:13px; white-space:nowrap; }}
+            .nav-btn:hover {{ background:#3d3d5c; }}
+            #chart-scrollbar {{ flex:1; cursor:pointer; accent-color:#ff9800; }}
         </style>
     </head>
     <body>
         <div id="chart"></div>
+        <div id="nav-bar">
+            <button class="nav-btn" id="btn-first">|◀ 先頭</button>
+            <input type="range" id="chart-scrollbar" min="0" max="1000" value="1000">
+            <button class="nav-btn" id="btn-last">最後 ▶|</button>
+        </div>
         <div id="trade-table-container">
             <table id="trade-table">
                 <thead><tr>
@@ -239,7 +278,8 @@ def create_lightweight_chart(df, trades, chart_height=600, jump_to=None, pip_uni
                 wickDownColor:  '{COLOR_SHORT}',
                 priceLineVisible: false,
             }});
-            candlestickSeries.setData({candlestick_json});
+            const candleData = {candlestick_json};
+            candlestickSeries.setData(candleData);
 
             // 75SMAライン
             const lineSeries = chart.addLineSeries({{
@@ -249,6 +289,18 @@ def create_lightweight_chart(df, trades, chart_height=600, jump_to=None, pip_uni
                 priceLineVisible: false,
             }});
             lineSeries.setData({sma_json});
+
+            // plot_config から追加ライン
+            const extraLines = {extra_lines_json};
+            extraLines.forEach(function(line) {{
+                const s = chart.addLineSeries({{
+                    color: line.color,
+                    lineWidth: line.lineWidth,
+                    title: line.title,
+                    priceLineVisible: false,
+                }});
+                s.setData(line.data);
+            }});
 
             // マーカー（組み込みは非表示・キャンバス円で代替）
             candlestickSeries.setMarkers([]);
@@ -447,6 +499,35 @@ def create_lightweight_chart(df, trades, chart_height=600, jump_to=None, pip_uni
                     chart.timeScale().fitContent();
                 }}
             }} catch(e) {{}}
+            // スクロールバー設定
+            const scrollbar = document.getElementById('chart-scrollbar');
+            const totalBars = candleData.length;
+            scrollbar.max = totalBars;
+            scrollbar.value = totalBars;
+
+            scrollbar.addEventListener('input', function() {{
+                const pos = parseInt(scrollbar.value);
+                const range = chart.timeScale().getVisibleLogicalRange();
+                const visibleCount = range ? Math.round(range.to - range.from) : 120;
+                chart.timeScale().setVisibleLogicalRange({{from: pos - visibleCount, to: pos}});
+            }});
+
+            chart.timeScale().subscribeVisibleLogicalRangeChange(function(range) {{
+                if (range) scrollbar.value = Math.round(range.to);
+            }});
+
+            document.getElementById('btn-first').addEventListener('click', function() {{
+                const range = chart.timeScale().getVisibleLogicalRange();
+                const visibleCount = range ? Math.round(range.to - range.from) : 120;
+                chart.timeScale().setVisibleLogicalRange({{from: 0, to: visibleCount}});
+            }});
+
+            document.getElementById('btn-last').addEventListener('click', function() {{
+                const range = chart.timeScale().getVisibleLogicalRange();
+                const visibleCount = range ? Math.round(range.to - range.from) : 120;
+                chart.timeScale().setVisibleLogicalRange({{from: totalBars - visibleCount, to: totalBars + 2}});
+            }});
+
             drawLines();
             }}, 100);
         </script>

@@ -1,21 +1,23 @@
 """
-R氏 平均足75SMA手法
+平均足75SMA手法（SMA割れ決済版）
+エントリー：R氏手法と同じ
+決済：ha_closeがSMAを下回ったら（ロング）/ 上回ったら（ショート）
 """
 import pandas as pd
 
-NAME = "平均足75SMA H1（色変わり・ADXあり）"
-GRANULARITY = "H1"  # 足の種類（H1 = 1時間足）
-COUNT = 200         # 必要な取得本数（SMA75 + 傾き判定5本 + バッファ）
+NAME = "平均足75SMA H1（75SMA割れ決済・ADXあり）"
+GRANULARITY = "H1"
+COUNT = 200
 
 LAST = -1
 PREV = LAST - 1
 
-STOP_LOSS_PIPS = 30   # 損切り幅（pips）。0にすると損切りなし
-TREND_THRESHOLD = 0   # SMAの最低傾き幅。0=少しでも動けばOK（元の動作）
-ADX_PERIOD    = 14    # ADXの期間
-ADX_THRESHOLD = 25    # ADXがこの値以上のときだけエントリー（25=トレンドあり）
-BB_PERIOD     = 20    # ボリンジャーバンドの期間
-BB_STD        = 2     # ボリンジャーバンドの標準偏差の倍数
+STOP_LOSS_PIPS = 30
+TREND_THRESHOLD = 0
+ADX_PERIOD    = 14
+ADX_THRESHOLD = 25
+BB_PERIOD     = 20
+BB_STD        = 2
 
 plot_config = {
     "main_plot": {
@@ -70,22 +72,18 @@ def check_long_entry(df):
     if len(df) < 2:
         return False
 
-    # ADXフィルター（トレンドが弱いときはエントリーしない）
     adx = df['adx'].iloc[LAST]
     if pd.isna(adx) or adx < ADX_THRESHOLD:
         return False
 
-    # トレンドチェック（上昇トレンド）
     has_trend, trend_direction = _check_trend(df)
     if not has_trend or trend_direction != 'up':
         return False
 
-    # 平均足の色が赤→青に変化
     prev_color = df['ha_color'].iloc[PREV]
     curr_color = df['ha_color'].iloc[LAST]
 
     if prev_color == -1 and curr_color == 1:
-        # 平均足の実体下限がSMAより上
         ha_body_bottom = df['ha_body_bottom'].iloc[LAST]
         sma = df['sma'].iloc[LAST]
         if not pd.isna(sma) and ha_body_bottom > sma:
@@ -99,22 +97,18 @@ def check_short_entry(df):
     if len(df) < 2:
         return False
 
-    # ADXフィルター（トレンドが弱いときはエントリーしない）
     adx = df['adx'].iloc[LAST]
     if pd.isna(adx) or adx < ADX_THRESHOLD:
         return False
 
-    # トレンドチェック（下降トレンド）
     has_trend, trend_direction = _check_trend(df)
     if not has_trend or trend_direction != 'down':
         return False
 
-    # 平均足の色が青→赤に変化
     prev_color = df['ha_color'].iloc[PREV]
     curr_color = df['ha_color'].iloc[LAST]
 
     if prev_color == 1 and curr_color == -1:
-        # 平均足の実体上限がSMAより下
         ha_body_top = df['ha_body_top'].iloc[LAST]
         sma = df['sma'].iloc[LAST]
         if not pd.isna(sma) and ha_body_top < sma:
@@ -124,25 +118,31 @@ def check_short_entry(df):
 
 
 def check_long_exit(df):
-    """ロング決済条件"""
-    if len(df) < 2:
+    """ロング決済条件：ha_closeがSMAを下回ったら決済"""
+    if len(df) < 1:
         return False
 
-    # 平均足の色が青→赤に変化
-    prev_color = df['ha_color'].iloc[PREV]
-    curr_color = df['ha_color'].iloc[LAST]
-    return prev_color == 1 and curr_color == -1
+    ha_close = df['ha_close'].iloc[LAST]
+    sma = df['sma'].iloc[LAST]
+
+    if pd.isna(sma):
+        return False
+
+    return ha_close < sma
 
 
 def check_short_exit(df):
-    """ショート決済条件"""
-    if len(df) < 2:
+    """ショート決済条件：ha_closeがSMAを上回ったら決済"""
+    if len(df) < 1:
         return False
 
-    # 平均足の色が赤→青に変化
-    prev_color = df['ha_color'].iloc[PREV]
-    curr_color = df['ha_color'].iloc[LAST]
-    return prev_color == -1 and curr_color == 1
+    ha_close = df['ha_close'].iloc[LAST]
+    sma = df['sma'].iloc[LAST]
+
+    if pd.isna(sma):
+        return False
+
+    return ha_close > sma
 
 
 def _check_trend(df, lookback=5):
