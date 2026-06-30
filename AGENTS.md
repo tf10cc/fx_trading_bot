@@ -11,6 +11,6 @@ Codex作業開始時の必読ファイル
 
 C:\Users\tf10c\.claude\CLAUDE.md
 C:\Users\tf10c\project\fx_trading_bot\CLAUDE.md
-C:\Users\tf10c\Dropbox\ObsidianVault\EA_main.md
-C:\Users\tf10c\Dropbox\ObsidianVault\EA_log.md
+C:\Users\tf10c\Dropbox\ObsidianVault\EA\EA_main.md
+C:\Users\tf10c\Dropbox\ObsidianVault\EA\EA_log.md
 C:\Users\tf10c\Dropbox\ObsidianVault\FES1.1案.md
